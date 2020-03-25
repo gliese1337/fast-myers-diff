@@ -1,3 +1,68 @@
+const DIAG = 1;
+const DOWN = 2;
+const RIGHT = 3;
+
+function * lcs_grid(xs, sx, ex, ys, sy, ey, lgrid, mgrid) {
+  const nx = ex - sx + 1;
+  const ny = ey - sy + 1;
+  const size = nx * ny;
+  lgrid.fill(0, 0, size);
+  mgrid.fill(0, 0, size);
+
+  for (let i = nx - 2; i >= 0; i--) {
+    const x = xs[sx + i];
+    for (let j = ny - 2; j >= 0; j--) {
+      const y = ys[sy + j];
+      const idx = i * ny + j;
+      if (x === y) {
+        lgrid[idx] = lgrid[idx + ny + 1] + 1;
+        mgrid[idx] = DIAG;
+      } else {
+        const right = lgrid[idx + ny];
+        const under = lgrid[idx + 1];
+        if (right < under) {
+          lgrid[idx] = under;
+          mgrid[idx] = DOWN;
+        } else {
+          lgrid[idx] = right;
+          mgrid[idx] = RIGHT;
+        }
+      }
+    }
+  }
+
+  let move = mgrid[0];
+  let [idx, i, j] = [0, 0, 0];
+  loop: for (;;) {
+    switch (move) {
+      case 0: break loop;
+      case DIAG: {
+        sx = i;
+        sy = j;
+        do {
+          idx += ny + 1;
+          move = mgrid[idx];
+          i++;
+          j++;
+        } while (move === DIAG);
+        yield [sx, i, sy, j];
+        break;
+      }
+      case DOWN: {
+        move = mgrid[++idx];
+        j++;
+        break;
+      }
+      case RIGHT: {
+        idx += ny;
+        move = mgrid[idx];
+        i++;
+        break;
+      }
+    }
+  }
+}
+
 /**
  * Calculates LCS length (last row of dynamic matrix)
  */
@@ -10,12 +75,8 @@ function lcs_lens_fwd(xs, sx, ex, ys, sy, ey, curr, prev) {
     const x = xs[j];
 		[prev, curr] = [curr, prev];
     for (let i = 0; i < ny; i++) {
-      const y = ys[sy + i];
-			if (x === y) {
-				curr[i + 1] = prev[i] + 1;
-			} else {
-				curr[i + 1] = Math.max(curr[i], prev[i + 1]);
-			}
+      curr[i + 1] = x === ys[sy + i] ?
+        prev[i] + 1 : Math.max(curr[i], prev[i + 1]);
 		}
 	}
 
@@ -31,12 +92,8 @@ function lcs_lens_rev(xs, sx, ex, ys, sy, ey, curr, prev) {
     const x = xs[j];
 		[prev, curr] = [curr, prev];
     for (let k = 0, i = ey - 1; i >= sy; i--, k++) {
-      const y = ys[i];
-			if (x === y) {
-				curr[k + 1] = prev[k] + 1;
-			} else {
-				curr[k + 1] = Math.max(curr[k], prev[k + 1]);
-			}
+      curr[k + 1] = x === ys[i] ?
+        prev[k] + 1 : Math.max(curr[k], prev[k + 1]);
 		}
 	}
 
@@ -67,6 +124,13 @@ function * lcs_rec(xs, sx, ex, ys, sy, ey, target, a, b, c) {
       if (nx === 1) {
         const idx = ys.indexOf(xs[sx], sy);
         if (idx > -1 && idx < ey) yield [sx, sx+1, idx, idx+1];
+        break tail_loop;
+      }
+
+      if ((nx + 1) * (ny + 1) <= a.length) {
+        // bail out to the fast grid algorithm
+        // when memory constraints get small enough
+        yield * lcs_grid(xs, sx, ex, ys, sy, ey, a, b);
         break tail_loop;
       }
 
@@ -120,31 +184,8 @@ function strip(xs, sx, ex, ys, sy, ey) {
   return [sx, ++ex, sy, ++ey];
 }
 
-function * seq(iters) {
-  for (const i of iters) yield * i;
-}
-
-function * merge_records(...iters) {
-  const tail = seq(iters);
-  let last = tail.next().value;
-  if (!last) return;
-  const result = [];
-  for (const r of tail) {
-    if (r[0] === last[1] && r[2] === last[3]) {
-      last[1] = r[1];
-      last[3] = r[3];
-    } else {
-      yield last;
-      last = r;
-    }
-  }
-  yield last;
-}
-
 function expand(xs, sx, mx, ex, ys, sy, my, ey) {
   let [mxb, mxe, myb, mye] = [mx, mx, my, my];
-
-  //return [mxb, mxe, myb, mye];
 
   // Remove prefix from right
   for (; mxe < ex && mye < ey; mxe++, mye++) {
@@ -157,6 +198,26 @@ function expand(xs, sx, mx, ex, ys, sy, my, ey) {
   }
 
   return [++mxb, mxe, ++myb, mye];
+}
+
+function * seq(iters) {
+  for (const i of iters) yield * i;
+}
+
+function * merge_records(...iters) {
+  const tail = seq(iters);
+  let last = tail.next().value;
+  if (!last) return;
+  for (const r of tail) {
+    if (r[0] === last[1] && r[2] === last[3]) {
+      last[1] = r[1];
+      last[3] = r[3];
+    } else {
+      yield last;
+      last = r;
+    }
+  }
+  yield last;
 }
 
 function lcs(xs, ys) {
@@ -175,9 +236,9 @@ function lcs(xs, ys) {
     return list[Symbol.iterator]();
   }
 
-  const a = new Array(ny);
-  const b = new Array(ny);
-  const c = new Array(ny);
+  const a = new Uint16Array(ny);
+  const b = new Uint16Array(ny);
+  const c = new Uint16Array(ny);
 
   // Find split points
   const mx = sx + (nx >>> 1);
@@ -220,5 +281,6 @@ for (const [xs, ys, ans] of tests) {
   const arr = [...lcs(xs, ys)];
   //console.log(arr);
   const res = extract(xs, arr);
-  if (res !== ans) console.error(xs, ys, res);
+  if (res !== ans) console.error('error:', xs, ys, res, ans, res.length === ans.length);
+  else console.log('success:', xs, ys, res);
 }
