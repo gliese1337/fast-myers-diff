@@ -1,10 +1,10 @@
 /**
  * Calculates LCS length (last row of dynamic matrix)
  */
-function lcs_lens_fwd(xs, sx, ex, ys, sy, ey) {
+function lcs_lens_fwd(xs, sx, ex, ys, sy, ey, curr, prev) {
   const ny = ey - sy;
-  let curr = new Array(ny + 1).fill(0);
-  let prev = new Array(ny + 1).fill(0);
+  curr.fill(0, 0, ny + 1);
+  prev.fill(0, 0, ny + 1);
 
 	for (let j = sx; j < ex; j++) {
     const x = xs[j];
@@ -19,13 +19,13 @@ function lcs_lens_fwd(xs, sx, ex, ys, sy, ey) {
 		}
 	}
 
-	return curr;
+	return [curr, prev];
 }
 
-function lcs_lens_rev(xs, sx, ex, ys, sy, ey) {
+function lcs_lens_rev(xs, sx, ex, ys, sy, ey, curr, prev) {
   const ny = ey - sy;
-  let curr = new Array(ny + 1).fill(0);
-  let prev = new Array(ny + 1).fill(0);
+  curr.fill(0, 0, ny + 1);
+  prev.fill(0, 0, ny + 1);
 
 	for (let j = ex - 1; j >= sx; j--) {
     const x = xs[j];
@@ -56,18 +56,10 @@ function argmax(ll_b, ll_e, ny) {
   return j;
 }
 
-function * lcs_rec(xs, sx, ex, ys, sy, ey, target) {
+function * lcs_rec(xs, sx, ex, ys, sy, ey, target, a, b, c) {
   const stack = [];
+  let prefix = null;
   for (;;) {
-    // strip common prefixes
-    const [osx, osy] = [sx, sy];
-    for (; sx < ex && sy < ey; sx++, sy++) {
-      if (xs[sx] !== ys[sy]) break;
-      target--;
-    }
-
-    if (osx !== sx) yield [osx, sx, osy, sy];
-
     tail_loop: {
       const nx = ex - sx;
       const ny = ey - sy;
@@ -80,19 +72,27 @@ function * lcs_rec(xs, sx, ex, ys, sy, ey, target) {
 
       // Find split points
       const mx = sx + (nx >>> 1);
-      const ll_b = lcs_lens_fwd(xs, sx, mx, ys, sy, ey);
-      const ll_e = lcs_lens_rev(xs, mx, ex, ys, sy, ey);
+      const [ll_b, tmp] = lcs_lens_fwd(xs, sx, mx, ys, sy, ey, a, b);
+      const ll_e = lcs_lens_rev(xs, mx, ex, ys, sy, ey, c, tmp);
 
       let j = 0;
       while (ll_b[j] + ll_e[ny-j] !== target) j++;
       const my = sy + j;
 
-      // when one branch is empty, simulate tail recursion
-      if (sy === my) [sx, sy, target] = [mx, my, ll_e[ny - j]];
-      else if (my === ey) [ex, ey, target] = [mx, my, ll_b[j]];
-      else {
-        stack.push([mx, ex, my, ey, ll_e[ny - j]]); // right recursion
-        [ex, ey, target] = [mx, my, ll_b[j]]; // left recursion
+      // Expand from center
+      const [mxb, mxe, myb, mye] = expand(xs, sx, mx, ex, ys, sy, my, ey);
+      const center = mxb !== mxe ? [[mxb, mxe, myb, mye]] : [];
+      const tb = ll_b[j] - (mx - mxb);
+      const te = ll_e[ny - j] - (mye - my);
+
+      if (sy === myb) {
+        // Left is empty, so emit the center and tail-recurse right
+        yield * center;
+        [sx, sy, target] = [mxe, mye, te];
+      } else {
+        // Right recursion; save the center to emit after left recursion
+        stack.push([center, mxe, ex, mye, ey, te]);
+        [ex, ey, target] = [mxb, myb, tb]; // tail-recurse left
       }
 
       continue;
@@ -101,7 +101,8 @@ function * lcs_rec(xs, sx, ex, ys, sy, ey, target) {
     if (!stack.length) return;
     // Simulate return from left recursion
     // and immediate call to right recursion.
-    [sx, ex, sy, ey, target] = stack.pop();
+    [prefix, sx, ex, sy, ey, target] = stack.pop();
+    yield * prefix;
   }
 }
 
@@ -111,7 +112,7 @@ function strip(xs, sx, ex, ys, sy, ey) {
     if (xs[sx] !== ys[sy]) break;
   }
 
-  // strip commob suffixes
+  // strip common suffixes
   for (ex--, ey--; ex >= sx && ey >= sy; ex--, ey--) {
     if (xs[ex] !== ys[ey]) break;
   }
@@ -140,6 +141,24 @@ function * merge_records(...iters) {
   yield last;
 }
 
+function expand(xs, sx, mx, ex, ys, sy, my, ey) {
+  let [mxb, mxe, myb, mye] = [mx, mx, my, my];
+
+  //return [mxb, mxe, myb, mye];
+
+  // Remove prefix from right
+  for (; mxe < ex && mye < ey; mxe++, mye++) {
+    if (xs[mxe] !== ys[mye]) break;
+  }
+
+  // Strip suffix from left
+  for (mxb--, myb--; mxb >= sx && myb >= sy; mxb--, myb--) {
+    if (xs[mxb] !== ys[myb]) break;
+  }
+
+  return [++mxb, mxe, ++myb, mye];
+}
+
 function lcs(xs, ys) {
   const [sx, ex, sy, ey] = strip(xs, 0, xs.length, ys, 0, ys.length); 
   const prefix = sx > 0 ? [[0, sx, 0, sy]] : [];
@@ -156,17 +175,27 @@ function lcs(xs, ys) {
     return list[Symbol.iterator]();
   }
 
+  const a = new Array(ny);
+  const b = new Array(ny);
+  const c = new Array(ny);
+
   // Find split points
-  const mx = sx + ((ex - sx) >>> 1);
-  const ll_b = lcs_lens_fwd(xs, sx, mx, ys, sy, ey);
-  const ll_e = lcs_lens_rev(xs, mx, ex, ys, sy, ey);
+  const mx = sx + (nx >>> 1);
+  const [ll_b, tmp] = lcs_lens_fwd(xs, sx, mx, ys, sy, ey, a, b);
+  const ll_e = lcs_lens_rev(xs, mx, ex, ys, sy, ey, c, tmp);
   const j = argmax(ll_b, ll_e, ny);
   const my = sy + j;
 
-  const left = sy < my ? lcs_rec(xs, sx, mx, ys, sy, my, ll_b[j]) : [];
-  const right = my < ey ? lcs_rec(xs, mx, ex, ys, my, ey, ll_e[ny - j]) : [];
+  // Expand from center
+  const [mxb, mxe, myb, mye] = expand(xs, sx, mx, ex, ys, sy, my, ey);
+  const center = mxb !== mxe ? [[mxb, mxe, myb, mye]] : [];
+  const tb = ll_b[j] - (mx - mxb);
+  const te = ll_e[ny - j] - (mye - my);
+
+  const lft = sy < myb ? lcs_rec(xs, sx, mxb, ys, sy, myb, tb, a, b, c) : [];
+  const rgt = mye < ey ? lcs_rec(xs, mxe, ex, ys, mye, ey, te, a, b, c) : [];
   
-  return merge_records(prefix, left, right, suffix);
+  return merge_records(prefix, lft, center, rgt, suffix);
 }
 
 function extract(xs, indices) {
