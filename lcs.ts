@@ -1,72 +1,16 @@
-const DIAG = 1;
-const DOWN = 2;
-const RIGHT = 3;
+import { Indexable, Vec4 } from './types';
+import lcs_grid from './grid';
 
-function * lcs_grid(xs, sx, ex, ys, sy, ey, lgrid, mgrid) {
-  const nx = ex - sx + 1;
-  const ny = ey - sy + 1;
-  const size = nx * ny;
-  lgrid.fill(0, 0, size);
-  mgrid.fill(0, 0, size);
-
-  for (let i = nx - 2; i >= 0; i--) {
-    const x = xs[sx + i];
-    for (let j = ny - 2; j >= 0; j--) {
-      const y = ys[sy + j];
-      const idx = i * ny + j;
-      if (x === y) {
-        lgrid[idx] = lgrid[idx + ny + 1] + 1;
-        mgrid[idx] = DIAG;
-      } else {
-        const right = lgrid[idx + ny];
-        const under = lgrid[idx + 1];
-        if (right < under) {
-          lgrid[idx] = under;
-          mgrid[idx] = DOWN;
-        } else {
-          lgrid[idx] = right;
-          mgrid[idx] = RIGHT;
-        }
-      }
-    }
-  }
-
-  let move = mgrid[0];
-  let [idx, i, j] = [0, 0, 0];
-  loop: for (;;) {
-    switch (move) {
-      case 0: break loop;
-      case DIAG: {
-        sx = i;
-        sy = j;
-        do {
-          idx += ny + 1;
-          move = mgrid[idx];
-          i++;
-          j++;
-        } while (move === DIAG);
-        yield [sx, i, sy, j];
-        break;
-      }
-      case DOWN: {
-        move = mgrid[++idx];
-        j++;
-        break;
-      }
-      case RIGHT: {
-        idx += ny;
-        move = mgrid[idx];
-        i++;
-        break;
-      }
-    }
-  }
-}
+export { Indexable, Vec4 };
 
 /**
  * Calculates LCS length (last row of dynamic matrix)
  */
-function lcs_lens_fwd(xs, sx, ex, ys, sy, ey, curr, prev) {
+function lcs_lens_fwd(
+  xs: Indexable, sx: number, ex: number,
+  ys: Indexable, sy: number, ey: number,
+  curr: Uint16Array, prev: Uint16Array,
+) {
   const ny = ey - sy;
   curr.fill(0, 0, ny + 1);
   prev.fill(0, 0, ny + 1);
@@ -83,7 +27,11 @@ function lcs_lens_fwd(xs, sx, ex, ys, sy, ey, curr, prev) {
 	return [curr, prev];
 }
 
-function lcs_lens_rev(xs, sx, ex, ys, sy, ey, curr, prev) {
+function lcs_lens_rev(
+  xs: Indexable, sx: number, ex: number,
+  ys: Indexable, sy: number, ey: number,
+  curr: Uint16Array, prev: Uint16Array,
+) {
   const ny = ey - sy;
   curr.fill(0, 0, ny + 1);
   prev.fill(0, 0, ny + 1);
@@ -100,30 +48,46 @@ function lcs_lens_rev(xs, sx, ex, ys, sy, ey, curr, prev) {
 	return curr;
 }
 
-/* Find the y-axis split point when the target sum is not previously known */
-function argmax(ll_b, ll_e, ny) {
-  let j = 0;
-  let maxSum = 0;
+function expand(
+  xs: Indexable, sx: number, mx: number, ex: number,
+  ys: Indexable, sy: number, my: number, ey: number,
+) {
+  let [mxb, mxe, myb, mye] = [mx, mx, my, my];
 
-  for (let k = 0; k <= ny; k++) {
-      const sum = ll_b[k] + ll_e[ny - k];
-      if (sum > maxSum) [maxSum, j] = [sum, k];
+  // Remove prefix from right
+  for (; mxe < ex && mye < ey; mxe++, mye++) {
+    if (xs[mxe] !== ys[mye]) break;
   }
 
-  return j;
+  // Strip suffix from left
+  for (mxb--, myb--; mxb >= sx && myb >= sy; mxb--, myb--) {
+    if (xs[mxb] !== ys[myb]) break;
+  }
+
+  return [++mxb, mxe, ++myb, mye];
 }
 
-function * lcs_rec(xs, sx, ex, ys, sy, ey, target, a, b, c) {
-  const stack = [];
-  let prefix = null;
+function * lcs_rec(
+  xs: Indexable, sx: number, ex: number,
+  ys: Indexable, sy: number, ey: number,
+  target: number,
+  a: Uint16Array, b: Uint16Array, c: Uint16Array,
+): Generator<Vec4, unknown, undefined> {
+  const stack: [Vec4[], number, number, number, number, number][] = [];
+  let prefix: Vec4[] = null;
   for (;;) {
     tail_loop: {
       const nx = ex - sx;
       const ny = ey - sy;
       if (nx === 0 || ny === 0) break tail_loop;
       if (nx === 1) {
-        const idx = ys.indexOf(xs[sx], sy);
-        if (idx > -1 && idx < ey) yield [sx, sx+1, idx, idx+1];
+        const x = xs[sx];
+        for (let idx = sy; idx < ey; idx++) {
+          if (ys[idx] === x) {
+            yield [sx, sx+1, idx, idx+1];
+            break tail_loop;
+          }
+        }
         break tail_loop;
       }
 
@@ -145,7 +109,7 @@ function * lcs_rec(xs, sx, ex, ys, sy, ey, target, a, b, c) {
 
       // Expand from center
       const [mxb, mxe, myb, mye] = expand(xs, sx, mx, ex, ys, sy, my, ey);
-      const center = mxb !== mxe ? [[mxb, mxe, myb, mye]] : [];
+      const center: Vec4[] = mxb !== mxe ? [[mxb, mxe, myb, mye]] : [];
       const tb = ll_b[j] - (mx - mxb);
       const te = ll_e[ny - j] - (mye - my);
 
@@ -170,7 +134,10 @@ function * lcs_rec(xs, sx, ex, ys, sy, ey, target, a, b, c) {
   }
 }
 
-function strip(xs, sx, ex, ys, sy, ey) {
+function strip(
+  xs: Indexable, sx: number, ex: number,
+  ys: Indexable, sy: number, ey: number,
+) {
   // strip common prefixes
   for (; sx < ex && sy < ey; sx++, sy++) {
     if (xs[sx] !== ys[sy]) break;
@@ -184,27 +151,24 @@ function strip(xs, sx, ex, ys, sy, ey) {
   return [sx, ++ex, sy, ++ey];
 }
 
-function expand(xs, sx, mx, ex, ys, sy, my, ey) {
-  let [mxb, mxe, myb, mye] = [mx, mx, my, my];
+/* Find the y-axis split point when the target sum is not previously known */
+function argmax(ll_b: Uint16Array, ll_e: Uint16Array, ny: number) {
+  let j = 0;
+  let maxSum = 0;
 
-  // Remove prefix from right
-  for (; mxe < ex && mye < ey; mxe++, mye++) {
-    if (xs[mxe] !== ys[mye]) break;
+  for (let k = 0; k <= ny; k++) {
+      const sum = ll_b[k] + ll_e[ny - k];
+      if (sum > maxSum) [maxSum, j] = [sum, k];
   }
 
-  // Strip suffix from left
-  for (mxb--, myb--; mxb >= sx && myb >= sy; mxb--, myb--) {
-    if (xs[mxb] !== ys[myb]) break;
-  }
-
-  return [++mxb, mxe, ++myb, mye];
+  return j;
 }
 
-function * seq(iters) {
+function * seq<T>(iters: Iterable<T>[]) {
   for (const i of iters) yield * i;
 }
 
-function * merge_records(...iters) {
+function * merge_records(...iters: Iterable<Vec4>[]) {
   const tail = seq(iters);
   let last = tail.next().value;
   if (!last) return;
@@ -220,19 +184,24 @@ function * merge_records(...iters) {
   yield last;
 }
 
-function lcs(xs, ys) {
+export function lcs(xs: Indexable, ys: Indexable): IterableIterator<Vec4> {
   const [sx, ex, sy, ey] = strip(xs, 0, xs.length, ys, 0, ys.length); 
-  const prefix = sx > 0 ? [[0, sx, 0, sy]] : [];
-  const suffix = ex < xs.length ? [[ex, xs.length, ey, ys.length]] : [];
+  const prefix: Vec4[] = sx > 0 ? [[0, sx, 0, sy]] : [];
+  const suffix: Vec4[] = ex < xs.length ? [[ex, xs.length, ey, ys.length]] : [];
 
   const nx = ex - sx;
   const ny = ey - sy;
   if (nx === 0 || ny === 0) return [...prefix, ...suffix][Symbol.iterator]();
   if (nx === 1) {
-    const idx = ys.indexOf(xs[sx], sy);
-    const list = (idx > -1 && idx < ey) ?
+    let [x, idx] = [xs[sx], sy];
+    for (; idx < ey; idx++) {
+      if (ys[idx] === x) break;
+    }
+
+    const list: Vec4[] = idx < ey ?
       [...prefix, [sx, sx+1, idx, idx+1], ...suffix] :
       [...prefix, ...suffix];
+
     return list[Symbol.iterator]();
   }
 
@@ -249,7 +218,7 @@ function lcs(xs, ys) {
 
   // Expand from center
   const [mxb, mxe, myb, mye] = expand(xs, sx, mx, ex, ys, sy, my, ey);
-  const center = mxb !== mxe ? [[mxb, mxe, myb, mye]] : [];
+  const center: Vec4[] = mxb !== mxe ? [[mxb, mxe, myb, mye]] : [];
   const tb = ll_b[j] - (mx - mxb);
   const te = ll_e[ny - j] - (mye - my);
 
@@ -257,30 +226,4 @@ function lcs(xs, ys) {
   const rgt = mye < ey ? lcs_rec(xs, mxe, ex, ys, mye, ey, te, a, b, c) : [];
   
   return merge_records(prefix, lft, center, rgt, suffix);
-}
-
-function extract(xs, indices) {
-  return indices.map(([s, e]) => xs.slice(s, e)).join('');
-}
-
-const tests = [
-  ['abcfboopqxyz', 'abcgbooprxyz', 'abcboopxyz'],
-  ['', '', ''],
-  ['a', '', ''],
-  ['', 'b', ''],
-  ['abc', 'abc', 'abc'],
-  ['abcd', 'obce', 'bc'],
-  ['abc', 'ab', 'ab'],
-  ['abc', 'bc', 'bc'],
-  ['abcde', 'zbodf', 'bd'],
-  ['aa','aaaa', 'aa'],
-  ['GTCGTTCGGAATGCCGTTGCTCTGTAAA', 'ACCGGTCGAGTGCGCGGAAGCCGGCCGAA', 'GTCGTCGGAAGCCGGCCGAA'],
-];
-
-for (const [xs, ys, ans] of tests) {
-  const arr = [...lcs(xs, ys)];
-  //console.log(arr);
-  const res = extract(xs, arr);
-  if (res !== ans) console.error('error:', xs, ys, res, ans, res.length === ans.length);
-  else console.log('success:', xs, ys, res);
 }
