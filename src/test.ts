@@ -6,8 +6,9 @@ import { diff } from './meyers';
 //}
 
 const tests = [
-  ['abcfboopqxyz', 'abcgbooprxyz', 'abcboopxyz'],
-  /*['', '', ''],
+  ['preabmcdpost', 'prezxmywpost', 'prempost'],
+  /*['abcfboopqxyz', 'abcgbooprxyz', 'abcboopxyz'],
+  ['', '', ''],
   ['a', '', ''],
   ['', 'b', ''],
   ['abc', 'abc', 'abc'],
