@@ -6,8 +6,8 @@ function * diff_rec<T extends Indexable>(
 ): Generator<Vec4> {
   const stack: Vec4[] = [];
   let Z = 2 * Math.min(N,M) + 2;
-  const g = new Uint32Array(Z);
-  const p = new Uint32Array(Z);
+  let c = new Uint32Array(Z);
+  let d = new Uint32Array(Z);
   for (;;) {
     Z_block: {
       if (N > 0 && M > 0) {
@@ -19,8 +19,8 @@ function * diff_rec<T extends Indexable>(
         hloop: for (let h = 0; h <= hmax; h++) {
           const kmin = 2 * Math.max(0, h - M) - h;
           const kmax = h - 2 * Math.max(0, h - N);
+
           // forward pass
-          let [c,d] = [g,p];
           for (let k = kmin; k <= kmax; k += 2) {
             const ckp = c[(Z+k+1)%Z];
             const ckm = c[(Z+k-1)%Z];
@@ -37,7 +37,7 @@ function * diff_rec<T extends Indexable>(
           }
 
           // reverse pass
-          [c,d] = [p,g];
+          [c,d] = [d,c];
           for (let k = kmin; k <= kmax; k += 2) {
             const ckp = c[(Z+k+1)%Z];
             const ckm = c[(Z+k-1)%Z];
@@ -54,6 +54,7 @@ function * diff_rec<T extends Indexable>(
               break hloop;
             }
           }
+          [c,d] = [d,c];
         }
 
         if (D > 1 || (x !== u && y !== v)) {
@@ -74,8 +75,8 @@ function * diff_rec<T extends Indexable>(
     }
 
     Z = 2 * Math.min(N,M) + 2;
-    g.fill(0, 0, Z);
-    p.fill(0, 0, Z);
+    c.fill(0, 0, Z);
+    d.fill(0, 0, Z);
   }
 }
 
