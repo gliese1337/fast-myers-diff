@@ -67,14 +67,16 @@ function expand(
   return [++mxb, mxe, ++myb, mye];
 }
 
+type StackElement = [Vec4[], number, number, number, number, number];
+
 function * lcs_rec(
   xs: Indexable, sx: number, ex: number,
   ys: Indexable, sy: number, ey: number,
   target: number,
   a: Uint16Array, b: Uint16Array, c: Uint16Array,
 ): Generator<Vec4, unknown, undefined> {
-  const stack: [Vec4[], number, number, number, number, number][] = [];
-  let prefix: Vec4[] = null;
+  const stack: StackElement[] = [];
+  let prefix: Vec4[] = null as any;
   for (;;) {
     tail_loop: {
       const nx = ex - sx;
@@ -129,7 +131,7 @@ function * lcs_rec(
     if (!stack.length) return;
     // Simulate return from left recursion
     // and immediate call to right recursion.
-    [prefix, sx, ex, sy, ey, target] = stack.pop();
+    [prefix, sx, ex, sy, ey, target] = stack.pop() as StackElement;
     yield * prefix;
   }
 }
