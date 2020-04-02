@@ -1,5 +1,5 @@
 //import { lcs, Indexable, Vec4 } from './hirschberg';
-import { calcPatch, applyPatch, lcs, Indexable } from './meyers';
+import { calcPatch, applyPatch, lcs, Indexable } from '.';
 
 function extract(ys: Indexable, indices: [number, number, number][]) {
   return indices.map(([, s, l]) => ys.slice(s, s + l)).join('');

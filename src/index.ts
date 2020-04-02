@@ -85,9 +85,10 @@ function * diff_rec<T extends Indexable>(
 }
 
 export function * diff<T extends Indexable>(xs: T, ys: T) {
-  let i = 0; // skip common prefix
   let N = xs.length;
   let M = ys.length;
+
+  let i = 0; // skip common prefix
   while (i < N && i < M && xs[i] === ys[i]) i++;
   if (i === N && N === M) return; // the inputs are identical
 
@@ -151,7 +152,7 @@ export function * lcs<T extends Indexable>(xs: T, ys: T): Generator<Vec3> {
   // align i and j at the beginning of a shared section
   let j = i + ey - sy;
   i += ex - sx;
-  for (const [sx, ex, , ey] of iter) {
+  for ([sx, ex, , ey] of iter) {
     // yield common span, then re-align after a deletion
     if (i !== sx) yield [i, j, sx - i];
     [i, j] = [ex, ey];
