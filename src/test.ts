@@ -1,9 +1,8 @@
-import { lcs, Indexable, Vec4 } from './hirschberg';
-import { calcPatch, applyPatch, diff } from './meyers';
-//import { diff } from './meyers';
+//import { lcs, Indexable, Vec4 } from './hirschberg';
+import { calcPatch, applyPatch, lcs, Indexable } from './meyers';
 
-function extract(xs: Indexable, indices: Vec4[]) {
-  return indices.map(([s, e]) => xs.slice(s, e)).join('');
+function extract(ys: Indexable, indices: [number, number, number][]) {
+  return indices.map(([, s, l]) => ys.slice(s, s + l)).join('');
 }
 
 const tests = [
@@ -22,11 +21,14 @@ const tests = [
 ];
 
 for (const [xs, ys, ans] of tests) {
-  const common = extract(xs, [...lcs(xs, ys)]);
-  const es1 = [...diff(xs, ys)];
-  //console.log(xs, ys, JSON.stringify(es1));
+  const seq = [...lcs(xs, ys)];
+  const common = extract(ys, seq);
+  //const es1 = [...diff(xs, ys)];
   const es2 = [...calcPatch(xs, ys)];
   const edit = [...applyPatch(xs, es2)].join('');
-  if (common !== ans) console.error('lcs error:', xs, ys, ans, common);
-  if (edit !== ys) console.error('dif error:', xs, ys, edit, es1, es2);
+
+  if (ans === common) console.log('+ LCS', xs, ys, ans, JSON.stringify(seq));
+  else console.log('! LCS', xs, ys, ans, common, JSON.stringify(seq));
+  if (edit === ys) console.error('+ Dif', xs, ys, edit, JSON.stringify(es2));
+  else console.error('! Dif', xs, ys, edit, JSON.stringify(es2));
 }

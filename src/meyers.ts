@@ -1,4 +1,6 @@
-import { Indexable, Vec4 } from './types';
+export type Indexable = string | unknown[] | Int8Array | Int16Array | Int32Array | Uint8Array | Uint16Array | Uint32Array | Float32Array | Float64Array;
+type Vec4 = [number, number, number, number];
+type Vec3 = [number, number, number];
 
 function * diff_rec<T extends Indexable>(
   xs: T, i: number, N: number,
@@ -64,11 +66,13 @@ function * diff_rec<T extends Indexable>(
           if (N > 0 && M > 0) break Z_block;
         }
       }
-        
+
       if (M > N) {
-        yield [i + N, i + N, j + N, j + N + M];
+        const [ni, nj] = [i + N, j + N];
+        yield [ni, ni, nj, nj + M];
       } else if (M < N) {
-        yield [i + M, i + M + N, 0, 0];
+        const [mi, mj] = [i + M, j + M];
+        yield [mi, mi + N, mj, mj];
       }
 
       if (stack.length === 0) return;
@@ -85,14 +89,18 @@ export function * diff<T extends Indexable>(xs: T, ys: T) {
   let N = xs.length;
   let M = ys.length;
   while (i < N && i < M && xs[i] === ys[i]) i++;
+  if (i === N && N === M) return; // the inputs are identical
 
   // skip common suffix
   while (N > i && M > i && xs[--N] === ys[--M]);
 
   const iter = diff_rec(xs, i, N + 1 - i, ys, i, M + 1 - i);
-  let last = iter.next().value as Vec4;
-  if (!last) return;
 
+  // If the inputs are not identical, there *will*
+  // be at least one yielded value. Identity was
+  // checked above, so we don't need to check for
+  // a non-empty sequence here.
+  let last = iter.next().value as Vec4;
   for (const next of iter) {
     const [nds, nde, nis, nie] = next;
     if (nds === nde) { // this is an insert
@@ -118,18 +126,72 @@ export function * diff<T extends Indexable>(xs: T, ys: T) {
   yield last;
 }
 
+export function * lcs<T extends Indexable>(xs: T, ys: T): Generator<Vec3> {
+  const N = xs.length;
+  const M = ys.length;
+
+  let i = 0; // skip common prefix
+  while (i < N && i < M && xs[i] === ys[i]) i++;
+  if (i > 0) yield [0, 0, i];
+  if (i === N && N === M) return; // the inputs are identical
+
+  let [n, m] = [N, M]; // skip common suffix
+  while (n > i && m > i && xs[--n] === ys[--m]);
+
+  const iter = diff_rec(xs, i, n + 1 - i, ys, i, m + 1 - i);
+
+  // convert diffs into the dual similar-aligned representation
+
+  // If the inputs are not identical, there *will*
+  // be at least one yielded value. Identity was
+  // checked above, so we don't need to check for
+  // a non-empty sequence here.
+  let [sx, ex, sy, ey] = iter.next().value as Vec4;
+
+  // align i and j at the beginning of a shared section
+  let j = i + ey - sy;
+  i += ex - sx;
+  for (const [sx, ex, , ey] of iter) {
+    // yield common span, then re-align after a deletion
+    if (i !== sx) yield [i, j, sx - i];
+    [i, j] = [ex, ey];
+  }
+  if (i < N) yield [i, j, N - i];
+}
+
 export function * calcPatch<T extends Indexable>(xs: T, ys: T): Generator<[number, number, T]> {
-  for (const [ds, de, is, ie] of diff(xs, ys)) {
-    yield [ds, de, ys.slice(is, ie) as T];
+  if (ArrayBuffer.isView(ys)) {
+    // distinguish typed arrays from strings and generic arrays,
+    // because taking subarrays is cheaper than making shallow
+    // copies for slices.
+    for (const [ds, de, is, ie] of diff(xs, ys)) {
+      yield [ds, de, (ys as any).subarray(is, ie)];
+    }
+  } else {
+    for (const [ds, de, is, ie] of diff(xs, ys)) {
+      yield [ds, de, ys.slice(is, ie) as T];
+    }
   }
 }
 
 export function * applyPatch<T extends Indexable>(xs: T, patch: Iterable<[number, number, T]>): Generator<T> {
   let i = 0;
-  for (const [ds, de, ins] of patch) {
-    if (i < ds) yield xs.slice(i, ds) as T;
-    if (ins.length > 0) yield ins;
-    i = de;
+  if (ArrayBuffer.isView(xs)) {
+    // distinguish typed arrays from strings and generic arrays,
+    // because taking subarrays is cheaper than making shallow
+    // copies for slices.
+    for (const [ds, de, ins] of patch) {
+      if (i < ds) yield (xs as any).subarray(i, ds);
+      if (ins.length > 0) yield ins;
+      i = de;
+    }
+    if (i < xs.length) yield (xs as any).subarray(i);
+  } else {
+    for (const [ds, de, ins] of patch) {
+      if (i < ds) yield xs.slice(i, ds) as T;
+      if (ins.length > 0) yield ins;
+      i = de;
+    }
+    if (i < xs.length) yield xs.slice(i) as T;
   }
-  if (i < xs.length) yield xs.slice(i) as T;
 }
