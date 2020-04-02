@@ -1,7 +1,6 @@
-//import { lcs, Indexable, Vec4 } from './hirschberg';
-import { calcPatch, applyPatch, lcs, Indexable } from '.';
+import { calcPatch, applyPatch, lcs, Sliceable } from '.';
 
-function extract(ys: Indexable, indices: [number, number, number][]) {
+function extract(ys: Sliceable, indices: [number, number, number][]) {
   return indices.map(([, s, l]) => ys.slice(s, s + l)).join('');
 }
 

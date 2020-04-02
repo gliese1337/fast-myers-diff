@@ -1,4 +1,7 @@
-export type Indexable = string | unknown[] | Int8Array | Int16Array | Int32Array | Uint8Array | Uint16Array | Uint32Array | Float32Array | Float64Array;
+export type GenericIndexable = { [key: number]: unknown, readonly length: number };
+type TypedArray = Int8Array | Int16Array | Int32Array | Uint8Array | Uint16Array | Uint32Array | Float32Array | Float64Array;
+export type Indexable = string | unknown[] | TypedArray | GenericIndexable;
+export type Sliceable = TypedArray | (GenericIndexable & { slice(start: number, end?: number): Indexable });
 type Vec4 = [number, number, number, number];
 type Vec3 = [number, number, number];
 
@@ -143,24 +146,24 @@ export function * lcs<T extends Indexable>(xs: T, ys: T): Generator<Vec3> {
 
   // convert diffs into the dual similar-aligned representation
 
-  // If the inputs are not identical, there *will*
-  // be at least one yielded value. Identity was
-  // checked above, so we don't need to check for
-  // a non-empty sequence here.
   let [sx, ex, sy, ey] = iter.next().value as Vec4;
 
   // align i and j at the beginning of a shared section
   let j = i + ey - sy;
   i += ex - sx;
-  for ([sx, ex, , ey] of iter) {
-    // yield common span, then re-align after a deletion
-    if (i !== sx) yield [i, j, sx - i];
+  for (const rec of iter) {
+    [sx, ex, , ey] = rec;
+    if (i !== sx) { // re-use the vec4 as a vec3 to avoid allocation
+      rec.length--;
+      [rec[0], rec[1], rec[2]] = [i, j, sx - i];
+      yield rec as unknown as Vec3;
+    }
     [i, j] = [ex, ey];
   }
   if (i < N) yield [i, j, N - i];
 }
 
-export function * calcPatch<T extends Indexable>(xs: T, ys: T): Generator<[number, number, T]> {
+export function * calcPatch<T extends Sliceable>(xs: T, ys: T): Generator<[number, number, T]> {
   if (ArrayBuffer.isView(ys)) {
     // distinguish typed arrays from strings and generic arrays,
     // because taking subarrays is cheaper than making shallow
@@ -175,7 +178,7 @@ export function * calcPatch<T extends Indexable>(xs: T, ys: T): Generator<[numbe
   }
 }
 
-export function * applyPatch<T extends Indexable>(xs: T, patch: Iterable<[number, number, T]>): Generator<T> {
+export function * applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number, number, T]>): Generator<T> {
   let i = 0;
   if (ArrayBuffer.isView(xs)) {
     // distinguish typed arrays from strings and generic arrays,

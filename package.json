@@ -1,0 +1,26 @@
+{
+  "name": "fast-myers-diff",
+  "version": "1.0.0",
+  "description": "A fast, minimal, memory-efficient diff algorithm on strings, arrays, and typed arrays.",
+  "main": "dist/index.js",
+  "files": [
+    "dist/index.js",
+    "dist/index.d.ts"
+  ],
+  "scripts": {
+    "test": "tsc && node dist/test.js",
+    "build": "tsc",
+    "prepare": "tsc && minify dist\\index.js > dist\\index.min.js && del dist\\index.js && move dist\\index.min.js dist\\index.js"
+  },
+  "keywords": [
+    "myers",
+    "diff",
+    "lcs"
+  ],
+  "author": "Logan R. Kearsley",
+  "license": "MIT",
+  "devDependencies": {
+    "minify": "^5.1.1",
+    "typescript": "^3.8.3"
+  }
+}
