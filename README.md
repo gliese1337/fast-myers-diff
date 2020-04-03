@@ -2,7 +2,7 @@ Fast-Myers-Diff
 ================
 
 This is a fast, compact, memory efficient implementation of the O(ND) Myers diff algorithm.
-The core diff algorithm, including blank lines and comment, is only 123 lines. With LCS and patch features added, the total library is still less than 200 lines.
+The core diff algorithm, including blank lines and comment, is only 117 lines. With LCS and patch features added, the total library is still less than 200 lines.
 Minified and including type definitions, the published library is less than 3KB.
 
 This implementation improves on a naive implementation of Myers recursive algorithm in several ways:
@@ -46,4 +46,4 @@ function applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number, number,
 1. It avoids special-case code for joining each possible `Indexable` type;
 2. As with all of the other library functions, it permits stream processing without deciding *for* you to allocate enough memory to hold the entire result at once.
 
-This `diff(xs, ys)` and `lcs(xs, ys)` will also work with custom container types, as long as your container objects have a numeric `length` property. `calcPatch(xs, ys)` and 'applyPatch(xs, ys)` will also with with custom types, provided that they also implement a suitable `slice(start[, end])` method.
+This `diff(xs, ys)` and `lcs(xs, ys)` will also work with custom container types, as long as your container objects have a numeric `length` property. `calcPatch(xs, ys)` and `applyPatch(xs, ys)` will also with with custom types, provided that they also implement a suitable `slice(start[, end])` method.

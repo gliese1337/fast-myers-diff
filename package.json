@@ -1,6 +1,6 @@
 {
   "name": "fast-myers-diff",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A fast, minimal, memory-efficient diff algorithm on strings, arrays, and typed arrays.",
   "main": "dist/index.js",
   "files": [
@@ -22,5 +22,14 @@
   "devDependencies": {
     "minify": "^5.1.1",
     "typescript": "^3.8.3"
-  }
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gliese1337/fast-myers-diff.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gliese1337/fast-myers-diff/issues"
+  },
+  "homepage": "https://github.com/gliese1337/fast-myers-diff#readme"
 }
