@@ -10,6 +10,7 @@ function * diff_rec<T extends Indexable>(
   ys: T, j: number, M: number,
 ): Generator<Vec4, undefined> {
   const stack: Vec4[] = [];
+  let s = 0;
 
   let Z = 2 * Math.min(N, M) + 2;
   let c = new Uint32Array(Z);
@@ -65,7 +66,7 @@ function * diff_rec<T extends Indexable>(
         }
 
         if (D > 1 || (x !== u && y !== v)) {
-          stack.push([i + u, N - u, j + v, M - v]);
+          stack[s++] = [i + u, N - u, j + v, M - v];
           [N, M] = [x, y];
           if (N > 0 && M > 0) break Z_block;
         }
@@ -79,8 +80,8 @@ function * diff_rec<T extends Indexable>(
         yield [mi, mi + N, mj, mj];
       }
 
-      if (stack.length === 0) return;
-      [i, N, j, M] = stack.pop() as Vec4;
+      if (s === 0) return;
+      [i, N, j, M] = stack[--s];
     }
 
     Z = 2 * Math.min(N, M) + 2;
@@ -109,7 +110,7 @@ export function * diff<T extends Indexable>(xs: T, ys: T) {
       if (nis === last[3]) { // Multiple adjacent inserts
         last[3] = nie;
         continue;
-      } else if (last[2] === last[3] && nds >= last[0] && nds <= last[1]) {
+      } else if (nds >= last[0] && nds <= last[1] && last[2] === last[3]) {
         // Last record was a deletion, & this insert replaces it
         [last[2], last[3]] = [nis, nie];
         continue;
