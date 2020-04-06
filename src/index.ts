@@ -15,7 +15,7 @@ function * diff_rec<T extends Indexable>(
   let Z = 2 * Math.min(N, M) + 2;
   const b = new Uint32Array(2 * Z);
 
-  let [D, x, y, u, v] = [0, 0, 0, 0, 0];
+  let [x, y, u, v] = [0, 0, 0, 0, 0];
 
   for (;;) {
     Z_block: {
@@ -24,6 +24,8 @@ function * diff_rec<T extends Indexable>(
         const parity = L & 1;
         const delta = N - M;
         const hmax = (L >>> 1) + parity;
+        const xoffset = i + N - 1;
+        const yoffset = j + M - 1;
         hloop: for (let h = 0; h <= hmax; h++) {
           const kmin = 2 * Math.max(0, h - M) - h;
           const kmax = h - 2 * Math.max(0, h - N);
@@ -38,7 +40,10 @@ function * diff_rec<T extends Indexable>(
             b[Zk % Z] = u;
             const z = delta - k;
             if (parity === 1 && z < h && z > -h && u + b[Z + (Z + z % Z) % Z] >= N) {
-              D = 2 * h - 1;
+              if (2 * h - 1 > 1 || x !== u) {
+                stack[s++] = [i + u, N - u, j + v, M - v];
+                [N, M] = [x, y];
+              }
               break hloop;
             }
           }
@@ -49,39 +54,30 @@ function * diff_rec<T extends Indexable>(
             let ckm, ckp = b[Z + (Zk + 1) % Z];
             x = u = (k === -h || (ckm = b[Z + (Zk - 1) % Z], k < h && ckm < ckp)) ? ckp : ckm + 1;
             y = v = u - k;
-            const xoffset = i + N - 1;
-            const yoffset = j + M - 1;
             while (x < N && y < M && xs[xoffset - x] === ys[yoffset - y]) x++, y++;
             b[Z + Zk % Z] = x;
             const z = delta - k;
             if (parity === 0 && z <= h && z >= -h && x + b[(Z + z % Z) % Z] >= N) {
-              [D, x, y, u, v] = [2 * h, N - x, M - y, N - u, M - v];
+              if (h > 0 || x !== u) {
+                stack[s++] = [i + N - u, u, j + M - v, v];
+                [N, M] = [N - x, M - y];
+              }
               break hloop;
             }
           }
         }
-
-        if (D > 1 || (x !== u && y !== v)) {
-          stack[s++] = [i + u, N - u, j + v, M - v];
-          [N, M] = [x, y];
-          if (N > 0 && M > 0) break Z_block;
-        }
       }
 
-      if (M > N) {
-        const [ni, nj] = [i + N, j + N];
-        yield [ni, ni, nj, nj + M];
-      } else if (M < N) {
-        const [mi, mj] = [i + M, j + M];
-        yield [mi, mi + N, mj, mj];
-      }
+      if      (N === 0) yield [i, i, j, j + M];
+      else if (M === 0) yield [i, i + N, j, j];
+      else break Z_block;
 
       if (s === 0) return;
       [i, N, j, M] = stack[--s];
     }
 
     Z = 2 * Math.min(N, M) + 2;
-    D = b[1] = b[Z + 1] = 0;
+    b[1] = b[Z + 1] = 0;
   }
 }
 
