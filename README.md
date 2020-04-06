@@ -8,10 +8,10 @@ Minified and including type definitions, the published library is less than 3KB.
 This implementation improves on a naive implementation of Myers recursive algorithm in several ways:
 * By using circular buffers for k-line computations, we achieve bounds of O(min(N,M) + D) space and O(min(N,M) * D) time,
   where N and M are the lengths of the input sequences and D is the number of differences.
-* The original recursive algorithm is replaced by an iterative version with a minimal stack handling altered parameters for right-recursion.
+* The original recursive algorithm is replaced by an iterative version with a minimal stack storing the altered parameters for right-recursion.
   All other recursive calls are tail calls replaced with simple jumps (via `break` or `continue`). Huge inputs may blow the heap, but you'll never overflow the stack!
-* Allocation is minimized by pre-allocating buffer space to be re-used by each simulated recursive call, and tracking indices into the original inputs.
-  The core diff algorithm performs no slice operations or other copying of data.
+* Allocation is minimized by pre-allocating buffer space to be re-used by each simulated recursive call, and tracking indices into the original inputs. The core diff algorithm performs no slice operations or other copying of data. This also minimizes garbage production and GC pause time.
+* Buffers are allocated contiguously (using typed arrays) to improve cache locality.
 
 Because the core algorithm does not slice or copy data, it depends only on being able to compare elements of the inputs at arbitrary indices.
 Thus, it automatically operates equally well on any indexable type--strings, basic arrays, or any flavor of typed array.
