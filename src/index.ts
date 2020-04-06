@@ -13,8 +13,9 @@ function * diff_rec<T extends Indexable>(
   let s = 0;
 
   let Z = 2 * Math.min(N, M) + 2;
-  let c = new Uint32Array(Z);
-  let d = new Uint32Array(Z);
+  const b = new Uint32Array(2 * Z);
+  let [c, d] = [0, Z]; 
+
   let [D, x, y, u, v] = [0, 0, 0, 0, 0];
 
   for (;;) {
@@ -31,14 +32,14 @@ function * diff_rec<T extends Indexable>(
           // forward pass
           for (let k = kmin; k <= kmax; k += 2) {
             const Zk = (k % Z) + Z;
-            const [ckp, ckm] = [c[(Zk + 1) % Z], c[(Zk - 1) % Z]];
+            const [ckp, ckm] = [b[c + (Zk + 1) % Z], b[c + (Zk - 1) % Z]];
             u = (k === -h || (k < h && ckm < ckp)) ? ckp : ckm + 1;
             v = u - k;
             [x, y] = [u, v];
             while (u < N && v < M && xs[i + u] === ys[j + v]) u++, v++;
-            c[Zk % Z] = u;
+            b[c + Zk % Z] = u;
             const z = delta - k;
-            if (parity === 1 && z > -h && z < h && u + d[(Z + z % Z) % Z] >= N) {
+            if (parity === 1 && z > -h && z < h && u + b[d + (Z + z % Z) % Z] >= N) {
               D = 2 * h - 1;
               break hloop;
             }
@@ -48,16 +49,16 @@ function * diff_rec<T extends Indexable>(
           // reverse pass
           for (let k = kmin; k <= kmax; k += 2) {
             const Zk = (k % Z) + Z;
-            const [ckp, ckm] = [c[(Zk + 1) % Z], c[(Zk - 1) % Z]];
+            const [ckp, ckm] = [b[c + (Zk + 1) % Z], b[c + (Zk - 1) % Z]];
             x = (k === -h || (k < h && ckm < ckp)) ? ckp : ckm + 1;
             y = x - k;
             [u, v] = [N - x, M - y];
             const xoffset = i + N - 1;
             const yoffset = j + M - 1;
             while (x < N && y < M && xs[xoffset - x] === ys[yoffset - y]) x++, y++;
-            c[Zk % Z] = x;
+            b[c + Zk % Z] = x;
             const z = delta - k;
-            if (parity === 0 && z >= -h && z <= h && x + d[(Z + z % Z) % Z] >= N) {
+            if (parity === 0 && z >= -h && z <= h && x + b[d + (Z + z % Z) % Z] >= N) {
               [D, x, y] = [2 * h, N - x, M - y];
               break hloop;
             }
@@ -85,7 +86,8 @@ function * diff_rec<T extends Indexable>(
     }
 
     Z = 2 * Math.min(N, M) + 2;
-    D = c[1] = d[1] = 0;
+    [c, d] = [0, Z];
+    D = b[1] = b[d+1] = 0;
   }
 }
 
