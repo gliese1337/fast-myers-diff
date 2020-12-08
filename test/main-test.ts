@@ -7,6 +7,12 @@ function extract(ys: Sliceable, indices: [number, number, number][]) {
 }
 
 const tests = [
+  ['', '', ''],
+  ['a', 'b', ''],
+  ['a', 'bb', ''],
+  ['a', 'bc', ''],
+  ['a', 'bac', ''],
+  ['aa', 'ba', 'a'],
   ['a', 'baa', 'a'],
   ['abb', 'b', 'b'],
   ['preabmcdpost', 'prezxmywpost', 'prempost'],
@@ -23,17 +29,22 @@ const tests = [
   ['GTCGTTCGGAATGCCGTTGCTCTGTAAA', 'ACCGGTCGAGTGCGCGGAAGCCGGCCGAA', 'GTCGTCGGAAGCCGGCCGAA'],
 ];
 
-describe("Comprehensive Tests", () => {
+describe("LCS", () => {
   for (const [xs, ys, ans] of tests) {
-    it(`should calculate lcs & patch for ${ xs }, ${ ys }`, () => {
+    it(`should calculate lcs '${xs}', '${ys}'`, () => {
       const seq = [...lcs(xs, ys)];
       const common = extract(ys, seq);
-      // const es1 = [...diff(xs, ys)];
+      expect(ans).to.eql(common);
+    });
+  }
+});
+describe('patch', () => {
+  for (const [xs, ys] of tests) {
+    it(`should calculate patch for ${ xs }, ${ ys }`, () => {
       const es2 = [...calcPatch(xs, ys)];
       const edit = [...applyPatch(xs, es2)].join('');
-
-      expect(ans).to.eql(common);
       expect(edit).to.eql(ys);
     });
   }
 });
+
