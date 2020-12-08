@@ -19,6 +19,7 @@ function * diff_rec<T extends Indexable>(
 
   for (;;) {
     Z_block: {
+      //console.log("N & M", N, M);
       if (N > 0 && M > 0) {
         const L = N + M;
         const parity = L & 1;
@@ -68,6 +69,7 @@ function * diff_rec<T extends Indexable>(
         }
       }
 
+      // yield delete_start, delete_end, insert_start, insert_end
       if      (N === 0) yield [i, i, j, j + M];
       else if (M === 0) yield [i, i + N, j, j];
       else break Z_block;
@@ -81,7 +83,7 @@ function * diff_rec<T extends Indexable>(
   }
 }
 
-export function * diff<T extends Indexable>(xs: T, ys: T) {
+export function * diff<T extends Indexable>(xs: T, ys: T): Generator<Vec4> {
   let [i, N, M] = [0, xs.length, ys.length];
 
   // skip common prefix
@@ -90,6 +92,14 @@ export function * diff<T extends Indexable>(xs: T, ys: T) {
 
   // skip common suffix
   while (N > i && M > i && xs[--N] === ys[--M]);
+  if (N === 0) { // xs is a suffix of ys
+    yield [0, 0, 0, M]; // insert prefix from ys
+    return;
+  } 
+  if (M === 0) { // ys is a suffix of xs
+    yield [0, N, M, M]; // delete prefix from xs
+    return;
+  }
 
   const iter = diff_rec(xs, i, N + 1 - i, ys, i, M + 1 - i);
 
@@ -119,14 +129,18 @@ export function * diff<T extends Indexable>(xs: T, ys: T) {
 
 export function * lcs<T extends Indexable>(xs: T, ys: T): Generator<Vec3> {
   let [i, N, M] = [0, xs.length, ys.length];
-
+  console.log('lcs', xs, ys, N, M);
   // skip common prefix
   while (i < N && i < M && xs[i] === ys[i]) i++;
   if (i > 0) yield [0, 0, i];
-  if (i === N && N === M) return; // the inputs are identical
+  if (i === N || i === M) return; // One input is a prefix of the other
 
   let [n, m] = [N, M]; // skip common suffix
   while (n > i && m > i && xs[--n] === ys[--m]);
+  if (n === 0 || m === 0) { // One input is a suffix of the other
+    yield [n, m, Math.min(N, M)];
+    return;
+  }
 
   const iter = diff_rec(xs, i, n + 1 - i, ys, i, m + 1 - i);
 
