@@ -1,4 +1,4 @@
-const {Randomize} = require("./randomize");
+const {Randomize} = require("./test-utils");
 const Benchmark = require('benchmark')
 const MyersDiff = require('myers-diff');
 const FastMyersDiff = require('../bin/index')

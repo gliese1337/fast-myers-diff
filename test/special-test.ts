@@ -1,6 +1,6 @@
 import 'mocha';
 import { expect } from 'chai';
-import { calcPatch, applyPatch, lcs, Sliceable } from '../src';
+import { calcPatch, applyPatch, diff, lcs, Sliceable } from '../src';
 
 function extract<T>(ys: Sliceable<T>, indices: [number, number, number][]) {
   return indices.map(([, s, l]) => ys.slice(s, s + l)).join('');

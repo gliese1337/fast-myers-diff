@@ -12,7 +12,6 @@
     "noImplicitReturns": true,                /* Report error when not all code paths in function return a value. */
     "esModuleInterop": true        /* Enables experimental support for emitting type metadata for decorators. */
   },
-  "lib": ["es6"],
   "include": [
     "src/**/*"
   ],
