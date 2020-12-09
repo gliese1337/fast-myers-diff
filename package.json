@@ -21,15 +21,20 @@
   "author": "Logan R. Kearsley",
   "license": "MIT",
   "devDependencies": {
+    "@types/benchmark": "2.1.0",
     "@types/chai": "^4.2.14",
     "@types/mocha": "^8.0.4",
+    "@types/seedrandom": "^2.4.28",
+    "benchmark": "^2.1.4",
     "chai": "^4.2.0",
     "jsmin": "^1.0.1",
+    "microtime": "^3.0.0",
     "mocha": "^8.2.1",
+    "myers-diff": "^2.0.1",
+    "seedrandom": "^3.0.5",
     "ts-node": "^9.1.1",
     "typescript": "^3.9.7"
   },
-  "dependencies": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gliese1337/fast-myers-diff.git"
