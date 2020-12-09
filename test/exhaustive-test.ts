@@ -1,7 +1,7 @@
 
 import 'mocha';
 import { expect } from 'chai';
-import { applyPatch, calcPatch, diff } from '../src';
+import { applyPatch, calcPatch, diff, Sliceable } from '../src';
 
 const chars = 'abcdefghijklmnopqrstuvwxyz01234567890';
 
@@ -19,12 +19,12 @@ const chars = 'abcdefghijklmnopqrstuvwxyz01234567890';
  *
  */
 function* equivalencyClasses(n: number, c: number = 0, k: number = Infinity):
-  Generator<[number, string[]], void, any> {
+  Generator<[number, string], void, any> {
   let seq: number[] = [];
-  let work: (i: number, j: number) => Generator<[number, string[]], void, any>;
+  let work: (i: number, j: number) => Generator<[number, string], void, any>;
   work = function* (i: number, j: number) {
     if (i == n) {
-      yield [j, seq.map(i => chars[i])];
+      yield [j, seq.map(i => chars[i]).join('')];
     } else {
       for (seq[i] = 0; seq[i] < j; ++seq[i]) {
         yield* work(i + 1, j);
@@ -37,14 +37,14 @@ function* equivalencyClasses(n: number, c: number = 0, k: number = Infinity):
   yield * work(0, Math.min(c, k));
 }
 
-function *allPairsCore(n1: number, n2: number): Generator<[ string[], string[] ], void, any> {
+function *allPairsCore(n1: number, n2: number): Generator<[ string, string ], void, any> {
   for(const [c, v1] of equivalencyClasses(n1)){
     for(const [, v2] of equivalencyClasses(n2, c, c+1)){
       yield [v1, v2];
     }
   }
 }
-function *allPairs(n1: number, n2: number): Generator<[ string[], string[] ], void, any> {
+function *allPairs(n1: number, n2: number): Generator<[ string, string ], void, any> {
   // promote less redundancy
   if(n1 > n2){
     for(const [v2, v1] of allPairsCore(n2, n1)){
@@ -65,8 +65,8 @@ describe('test generation', () => {
     expect(counts).eql([1, 1, 2, 5, 15, 52, 203, 877, 4140, 21147, 115975, 678570, 4213597, 27644437, 190899322].slice(0, N));
   })
   it('the sequences with just one class', () => {
-    expect([...equivalencyClasses(4, 1, 1)]).eql([[1, ['a', 'a', 'a', 'a']]])
-    expect([...equivalencyClasses(4, 10, 1)]).eql([[1, ['a', 'a', 'a', 'a']]])
+    expect([...equivalencyClasses(4, 1, 1)]).eql([[1, 'aaaa']])
+    expect([...equivalencyClasses(4, 10, 1)]).eql([[1, 'aaaa']])
   })
   describe('the distribution of y', () => {
     for(let c = 1; c < 5; ++c){
@@ -97,28 +97,24 @@ describe('test generation', () => {
   })
 })
 
-function accessWatchDog<T extends object>(max: number, arrays: T[]): T[]{
+function accessWatchDog<T extends object>(max: number, ...arrays: T[]): T[]{
   let counter = 0;
   const handler = {
-    get: function(target: object, prop: PropertyKey, receiver: any): any {
-      if(++counter >= max){
-        throw new Error('Too many operations');
-      }
+    get(target: object, prop: PropertyKey, receiver: unknown) {
+      if(++counter >= max) throw new Error('Too many operations');
       return Reflect.get(target, prop, receiver);
     }
   };
-  return arrays.map(x => {
-    return new Proxy<T>(x, handler)
-  });
+  return arrays.map(x => new Proxy<T>(x, handler));
 }
 
-function edit<T>(xs: T[], ys: T[], es: Iterable<[number, number, number, number]>) {
+function edit<T, S extends Sliceable<T> & Iterable<T>>
+  (xs: S, ys: S, es: Iterable<[number, number, number, number]>) {
   let i = 0;
   const result: T[] = [];
   for (const [sx, ex, sy, ey] of es) {
     while (i < sx) result.push(xs[i++]);
-    if (sx < ex) // delete
-      i = ex;
+    if (sx < ex) i = ex; // delete
     if (sy < ey) // insert
       result.push(...ys.slice(sy, ey));
   }
@@ -133,14 +129,14 @@ describe("Exhaustive patch tests", () => {
         // It can be made tight
         const complexityBound = (N+M+1)*(N+M+1)*1000;
         for (const [xs, ys] of allPairs(N, M)) {
-          const [xsw, ysw] =  accessWatchDog(complexityBound, [xs, ys]);
-          it(`patch '${xs.join('')}' -> '${ys.join('')}'`, () => {
+          const [xsw, ysw] = accessWatchDog(complexityBound, new String(xs), new String(ys));
+          it(`patch '${xs}' -> '${ys}'`, () => {
             const es = diff(xsw, ysw);
             const edited = edit(xs, ys, es).join('');
-            expect(edited).eqls(ys.join(''));
+            expect(edited).eqls(ys);
 
-            const patched = [...applyPatch(xs, calcPatch(xs, ys))].map(x=>x.join('')).join('');
-            expect(patched).eqls(ys.join(''))
+            const patched = [...applyPatch(xs, calcPatch(xs, ys))].join('');
+            expect(patched).eqls(ys);
           });
         }
       });

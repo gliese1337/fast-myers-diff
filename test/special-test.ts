@@ -2,11 +2,11 @@ import 'mocha';
 import { expect } from 'chai';
 import { calcPatch, applyPatch, lcs, Sliceable } from '../src';
 
-function extract(ys: Sliceable, indices: [number, number, number][]) {
+function extract<T>(ys: Sliceable<T>, indices: [number, number, number][]) {
   return indices.map(([, s, l]) => ys.slice(s, s + l)).join('');
 }
 
-const tests = [
+const tests: [string, string, string[]][] = [
   ['', '', ['']],
   ['a', '', ['']],
   ['', 'b', ['']],
@@ -19,7 +19,7 @@ const tests = [
   ['a',  'bbb', [''] ],
   ['aa', 'ba', ['a']],
   ['aa', 'bba', ['a']],
-  ['aa','aaaa', 'aa'],
+  ['aa','aaaa', ['aa']],
   ['ab', 'bb',  ['b']],
   ['ab', 'cb',  ['b']],
   ['ab', 'baa', ['b', 'a']],

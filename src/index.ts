@@ -1,8 +1,8 @@
-export type GenericIndexable = { [key: number]: unknown, readonly length: number };
+export type GenericIndexable<T> = { [key: number]: T, readonly length: number };
 type TypedArray = Int8Array | Int16Array | Int32Array | Uint8Array | Uint16Array | Uint32Array | Float32Array | Float64Array;
-export type Indexable = string | unknown[] | TypedArray | GenericIndexable;
+export type Indexable<T> = string | T[] | TypedArray | GenericIndexable<T>;
 
-export interface Sliceable extends GenericIndexable {
+export interface Sliceable<T> extends GenericIndexable<T> {
   slice(start: number, end?: number): this;
 }
 
@@ -13,86 +13,89 @@ type Vec3 = [number, number, number];
 // recursive subdivision, requring O(min(N,M)) space
 // and O(min(N,M)*D) worst-case execution time where
 // D is the number of differences.
-export function * diff_rec<T extends Indexable>(xs: T, i: number, N: number, ys: T, j: number, M: number): Generator<Vec4> {
-  let Z = (Math.min(N,M)+1) << 1;
+export function * diff_rec<T extends Indexable<unknown>>(xs: T, i: number, N: number, ys: T, j: number, M: number): Generator<Vec4> {
+  let Z = (Math.min(N, M) + 1) << 1;
   const b = new ArrayBuffer(Z<<1);
   const g = new Uint8Array(b, 0, Z);
   const p = new Uint8Array(b, Z, Z);
 
-  let [u, v, s] = [0, 0, 0];
+  let [x, y, u, v, z, s] = [0, 0, 0, 0, 0, 0];
   const stack: Vec4[] = [];
   for(;;) {
     Z_block: while (N > 0 && M > 0) {
-      Z = (Math.min(N,M)+1) << 1;
-
       g.fill(0, 0, Z);
       p.fill(0, 0, Z);
 
       const W = N - M;
       const L = N + M;
       const parity = L & 1;
-      const hmax = (L>>>1) + parity;
+      const offsetx = i + N - 1;
+      const offsety = j + M - 1;
+      const hmax = (L >>> 1) + parity;
       h_loop: for (let h = 0; h <= hmax; h++) {
-        const kmin = 2*Math.max(0,h-M)-h;
-        const kmax = h-2*Math.max(0,h-N);
-        {
-          for (let k = kmin; k <= kmax; k += 2) {
-            const Zk = (k % Z) + Z;
-            const gkm = g[(Zk - 1) % Z];
-            const gkp = g[(Zk + 1) % Z];
-            let x = u = (k === -h || (k !== h && gkm < gkp)) ? gkp : gkm + 1;
-            let y = v = x - k;
-            while (x < N && y < M && xs[i+x] === ys[j+y]) x++, y++;
-            g[Zk % Z] = x;
-            const z = W - k;
-            if (parity === 1 && z >= 1 - h && z < h && x + p[(Z + z % Z) % Z] >= N) {
-              if (h > 1 || x !== u) {
-                stack[s++] = [i + x, N - x, j + y, M - y];
-                [N, M] = [u, v];
-                continue Z_block;
-              } else break h_loop;
-            }
+        const kmin = 2 * Math.max(0, h - M) - h;
+        const kmax = h - 2 * Math.max(0, h - N);
+        
+        // Forward pass
+        for (let k = kmin; k <= kmax; k += 2) {
+          const Zk = (k % Z) + Z;
+          const gkm = g[(Zk - 1) % Z];
+          const gkp = g[(Zk + 1) % Z];
+          x = u = (k === -h || (k !== h && gkm < gkp)) ? gkp : gkm + 1;
+          y = v = x - k;
+          while (x < N && y < M && xs[i + x] === ys[j + y]) x++, y++;
+          g[Zk % Z] = x;
+          if (parity === 1 && (z = W - k) >= 1 - h && z < h && x + p[(Z + z % Z) % Z] >= N) {
+            if (h > 1 || x !== u) {
+              stack[s++] = [i + x, N - x, j + y, M - y];
+              [N, M] = [u, v];
+              Z = (Math.min(N, M) + 1) << 1;
+              continue Z_block;
+            } else break h_loop;
           }
         }
-        {
-          const offsetx = i + N - 1;
-          const offsety = j + M - 1;
-          for (let k = kmin; k <= kmax; k += 2) {
-            const Zk = (k % Z) + Z;
-            const pkm = p[(Zk - 1) % Z];
-            const pkp = p[(Zk + 1) % Z];
-            let x = u = (k === -h || (k !== h && pkm < pkp)) ? pkp : pkm + 1;
-            let y = v = x - k;
-            while (x < N && y < M && xs[offsetx - x] === ys[offsety - y]) x++, y++;
-            p[Zk % Z] = x;
-            const z = W - k;
-            if (parity === 0 && z >= -h && z <= h && x + g[(Z + z % Z) % Z] >= N) {
-              if (h > 0 || x !== u) {
-                stack[s++] = [i + N - u, u, j + M - v, v];
-                [N, M] = [N - x, M - y];
-                continue Z_block;
-              } else break Z_block;
-            }
+      
+        // Reverse pass
+        for (let k = kmin; k <= kmax; k += 2) {
+          const Zk = (k % Z) + Z;
+          const pkm = p[(Zk - 1) % Z];
+          const pkp = p[(Zk + 1) % Z];
+          x = u = (k === -h || (k !== h && pkm < pkp)) ? pkp : pkm + 1;
+          y = v = x - k;
+          while (x < N && y < M && xs[offsetx - x] === ys[offsety - y]) x++, y++;
+          p[Zk % Z] = x;
+          if (parity === 0 && (z = W - k) >= -h && z <= h && x + g[(Z + z % Z) % Z] >= N) {
+            if (h > 0 || x !== u) {
+              stack[s++] = [i + N - u, u, j + M - v, v];
+              [N, M] = [N - x, M - y];
+              Z = (Math.min(N, M) + 1) << 1;
+              continue Z_block;
+            } else break h_loop;
           }
         }
       }
 
       if (N === M) continue Z_block;
-      if      (M > N) [i, N, j, M] = [i + N, 0, j + N, M - N];
-      else if (M < N) [i, N, j, M] = [i + M, N - M, j + M, 0];
+      if (M > N) [i, N, j, M] = [i + N, 0,     j + N, M - N];
+      else       [i, N, j, M] = [i + M, N - M, j + M, 0    ];
+
+      // We already know either N or M is zero, so we can
+      // skip the extra check at the top of the loop.
       break Z_block;
     }
     
     // yield delete_start, delete_end, insert_start, insert_end
-    if      (N > 0) yield [i, i + N, j, j];
-    else if (M > 0) yield [i, i, j, j + M];
+    // At this point, at least one of N & M is zero, or we
+    // wouldn't have gotten out of the preceding loop yet.
+    if (N + M !== 0) yield [i, i + N, j, j + M];
 
     if (s === 0) return;
     [i, N, j, M] = stack[--s];
+    Z = (Math.min(N, M) + 1) << 1;
   }
 }
 
-export function * diff<T extends Indexable>(xs: T, ys: T): Generator<Vec4> {
+export function * diff<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec4> {
   let [i, N, M] = [0, xs.length, ys.length];
 
   // eliminate common prefix
@@ -107,7 +110,7 @@ export function * diff<T extends Indexable>(xs: T, ys: T): Generator<Vec4> {
   yield * diff_rec(xs, i, N + 1 - i, ys, i, M + 1 - i);
 }
 
-export function * lcs<T extends Indexable>(xs: T, ys: T): Generator<Vec3> {
+export function * lcs<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec3> {
   const N = xs.length;
 
   // Convert diffs into the dual similar-aligned representation.
@@ -127,7 +130,7 @@ export function * lcs<T extends Indexable>(xs: T, ys: T): Generator<Vec3> {
   if (i < N) yield [i, j, N - i];
 }
 
-export function * calcPatch<T extends Sliceable>(xs: T, ys: T): Generator<[number, number, T]> {
+export function * calcPatch<T, S extends Sliceable<T>>(xs: S, ys: S): Generator<[number, number, S]> {
   // Taking subarrays is cheaper than slicing for TypedArrays.
   const slice = ArrayBuffer.isView(xs) ?
     Uint8Array.prototype.subarray as unknown as typeof xs.slice: xs.slice;
@@ -136,7 +139,7 @@ export function * calcPatch<T extends Sliceable>(xs: T, ys: T): Generator<[numbe
   }
 }
 
-export function * applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number, number, T]>): Generator<T> {
+export function * applyPatch<T, S extends Sliceable<T>>(xs: S, patch: Iterable<[number, number, S]>): Generator<S> {
   let i = 0; // Taking subarrays is cheaper than slicing for TypedArrays.
   const slice = ArrayBuffer.isView(xs) ?
     Uint8Array.prototype.subarray as unknown as typeof xs.slice: xs.slice;
