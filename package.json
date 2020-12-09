@@ -1,6 +1,6 @@
 {
   "name": "fast-myers-diff",
-  "version": "1.0.4",
+  "version": "2.0.0",
   "description": "A fast, minimal, memory-efficient diff algorithm on strings, arrays, and typed arrays.",
   "main": "bin/index.js",
   "files": [
