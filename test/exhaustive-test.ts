@@ -1,7 +1,7 @@
 
 import 'mocha';
 import { expect } from 'chai';
-import {applyPatch, calcPatch} from '../src';
+import { applyPatch, calcPatch, diff } from '../src';
 
 const chars = 'abcdefghijklmnopqrstuvwxyz01234567890';
 
@@ -112,18 +112,35 @@ function accessWatchDog<T extends object>(max: number, arrays: T[]): T[]{
   });
 }
 
+function edit<T>(xs: T[], ys: T[], es: Iterable<[number, number, number, number]>) {
+  let i = 0;
+  const result: T[] = [];
+  for (const [sx, ex, sy, ey] of es) {
+    while (i < sx) result.push(xs[i++]);
+    if (sx < ex) // delete
+      i = ex;
+    if (sy < ey) // insert
+      result.push(...ys.slice(sy, ey));
+  }
+  result.push(...xs.slice(i));
+  return result;
+}
+
 describe("Exhaustive patch tests", () => {
-  for(let N = 0; N < 4; ++N){
-    for(let M = 0; M < 4; ++M) {
+  for(let N = 1; N < 5; ++N){
+    for(let M = 0; M < 5; ++M) {
       describe(`all sequences of sizes N=${N}, M=${M}`, () => {
         // It can be made tight
         const complexityBound = (N+M+1)*(N+M+1)*1000;
         for (const [xs, ys] of allPairs(N, M)) {
           const [xsw, ysw] =  accessWatchDog(complexityBound, [xs, ys]);
           it(`patch '${xs.join('')}' -> '${ys.join('')}'`, () => {
-            const es2 = [...calcPatch(xsw, ysw)];
-            const edit = [...applyPatch(xs, es2)].map(x=>x.join('')).join('');
-            expect(edit).eqls(ys.join(''))
+            const es = diff(xsw, ysw);
+            const edited = edit(xs, ys, es).join('');
+            expect(edited).eqls(ys.join(''));
+
+            const patched = [...applyPatch(xs, calcPatch(xs, ys))].map(x=>x.join('')).join('');
+            expect(patched).eqls(ys.join(''))
           });
         }
       });
