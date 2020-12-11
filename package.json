@@ -36,9 +36,6 @@
     "ts-node": "^9.1.1",
     "typescript": "^3.9.7"
   },
-  "dependencies": {
-    "@types/node": "^14.14.12"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gliese1337/fast-myers-diff.git"
