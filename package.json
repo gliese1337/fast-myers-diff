@@ -1,6 +1,6 @@
 {
   "name": "fast-myers-diff",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A fast, minimal, memory-efficient diff algorithm on strings, arrays, and typed arrays.",
   "main": "bin/index.js",
   "files": [
@@ -11,7 +11,8 @@
     "test": "mocha -r ts-node/register test/**/*-test.ts",
     "build": "tsc",
     "minify": "jsmin -o bin/index.min.js bin/index.js && del bin\\index.js && move bin\\index.min.js bin\\index.js",
-    "prepare": "tsc && npm run minify"
+    "prepare": "tsc && npm run minify",
+    "benchmark": "tsc && node test/benchmark.js"
   },
   "keywords": [
     "myers",
@@ -35,7 +36,9 @@
     "ts-node": "^9.1.1",
     "typescript": "^3.9.7"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@types/node": "^14.14.12"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gliese1337/fast-myers-diff.git"

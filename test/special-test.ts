@@ -77,7 +77,38 @@ describe('Special tests', () => {
     expect(seen).eqls(diffs);
   })
 })
+
+
+
 describe('handcrafted examples', () => {
+  it('avoid fragmentation (1 char)', () => {
+    // Other valid solutions is are
+    //   [[0,1,0,0], [1,1,0,1]], [[0,0,0,1],[0,1,1,1]]
+    // But this increase the size and makes it more difficult to
+    // interpret the results
+    expect([...diff('a', 'b')]).eqls([[0,1,0,1]]);
+  })
+  it('random tests', () => {
+    const x = new Array(10000).fill('a');
+    const y = x.slice();
+    let j = 0;
+    for(let i = 0; i < 50; ++i){
+      let t;
+      do{
+        do{
+          t = 1 + ~~((y.length - 2) * Math.random())
+        }while(y[t] === 'b')
+        y[t] = 'b';
+        if(++j === y.length){
+          // Prevent an infinite loop.
+          return;
+        }
+      }while(y[t-1] === 'b' || y[t+1] === 'b')
+      expect([...diff(x, y)].length).eqls(i+1);
+    }
+    expect([...diff('a', 'b')]).eqls([[0,1,0,1]]);
+  })
+
   for (const {n, s1, s2, diffs} of [
     {
       n: 8,
@@ -98,10 +129,10 @@ describe('handcrafted examples', () => {
       ]
     }
   ]) {
-    const x = new Array(n);
-    const y = new Array(n);
-    x.fill('a', 0, n);
-    y.fill('a', 0, n);
+    const x = new Array(n+s1.length);
+    const y = new Array(n+s2.length);
+    x.fill('a', 0, n + s1.length);
+    y.fill('a', 0, n + s2.length);
     for (const i of s1) x[i] = 'b';
     for (const i of s2) y[i] = 'c';
     const yt = y.join('');
