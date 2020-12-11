@@ -49,3 +49,21 @@ function applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number, number,
 2. As with all of the other library functions, it permits stream processing without deciding *for* you to allocate enough memory to hold the entire result at once.
 
 `diff_rec`, `diff` and `lcs` will also work with custom container types, as long as your container objects have a numeric `length` property. `calcPatch` and `applyPatch` will work with custom types provided that they also implement a suitable `slice(start[, end])` method.
+
+
+### Empirical results
+
+Another package available throgh npm is [myers-diff](https://www.npmjs.com/package/myers-diff/v/2.0.1), this package is focused on string and does the tokenization internally, while `fast-myers-diff` uses an indexable inputs. The comparable scenario is when we use string inputs comparing by characters.
+
+The table below gives the number of operations per second reported by [benchmark](https://www.npmjs.com/package/benchmark/v/2.1.4) on a Windows 10 with Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz.
+
+| length of LCS | insertions | deletions | myers-diff | fast-myers-diff |
+|------|-----------| ---------- |------------|-----------------|
+|  100 |        10 |         10 |      1,849 |         26,803  |
+|  100 |         50|         50 |        987 |          2,557  |
+| 1000 |        200|        200 |       17.93|             198 |
+| 1000 |          0|         50 |        0.25|             644 |
+
+
+
+
