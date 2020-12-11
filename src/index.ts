@@ -35,6 +35,7 @@ export function* diff_rec<T extends Indexable<unknown>>(xs: T, i: number, N: num
   const stack: Vec4[] = [];
   for (; ;) {
     Z_block: while (N > 0 && M > 0) {
+      Z = (Math.min(N, M) + 1) * 2;
       g.fill(0, 0, Z);
       p.fill(0, 0, Z);
 
@@ -43,7 +44,7 @@ export function* diff_rec<T extends Indexable<unknown>>(xs: T, i: number, N: num
       const parity = L & 1;
       const offsetx = i + N - 1;
       const offsety = j + M - 1;
-      const hmax = (L / 2) + parity;
+      const hmax = (L + parity) / 2;
       h_loop: for (let h = 0; h <= hmax; h++) {
         const kmin = 2 * Math.max(0, h - M) - h;
         const kmax = h - 2 * Math.max(0, h - N);
@@ -56,15 +57,13 @@ export function* diff_rec<T extends Indexable<unknown>>(xs: T, i: number, N: num
           x = u = (k === -h || (k !== h && gkm < gkp)) ? gkp : gkm + 1;
           y = v = x - k;
           while (x < N && y < M && xs[i + x] === ys[j + y]) {
-            x++;
-            y++;
+            x++; y++;
           }
           g[Zk % Z] = x;
           if (parity === 1 && (z = W - k) >= 1 - h && z < h && x + p[(Z + z % Z) % Z] >= N) {
             if (h > 1 || x !== u) {
               stack[s++] = [i + x, N - x, j + y, M - y];
               [N, M] = [u, v];
-              Z = (Math.min(N, M) + 1) * 2;
               continue Z_block;
             } else break h_loop;
           }
@@ -83,10 +82,8 @@ export function* diff_rec<T extends Indexable<unknown>>(xs: T, i: number, N: num
           p[Zk % Z] = x;
           if (parity === 0 && (z = W - k) >= -h && z <= h && x + g[(Z + z % Z) % Z] >= N) {
             if (h > 0 || x !== u) {
-
               stack[s++] = [i + N - u, u, j + M - v, v];
               [N, M] = [N - x, M - y];
-              Z = (Math.min(N, M) + 1) << 1;
               continue Z_block;
             } else break h_loop;
           }
