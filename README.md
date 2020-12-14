@@ -1,3 +1,4 @@
+
 Fast-Myers-Diff
 ================
 
@@ -5,7 +6,7 @@ This is a fast, compact, memory efficient implementation of the O(ND) Myers diff
 Minified and including type definitions, the published library is less than 4KB.
 
 This implementation improves on a naive implementation of Myers recursive algorithm in several ways:
-* By using circular buffers for k-line computations, we achieve bounds of O(min(N,M) + D) space and O(min(N,M) * D) time,
+* By using circular buffers for k-line computations, we achieve bounds of O(min(N,M) | D) space and O(min(N,M) * D) time,
   where N and M are the lengths of the input sequences and D is the number of differences.
 * The original recursive algorithm is replaced by an iterative version with a minimal stack storing the altered parameters for right-recursion.
   All other recursive calls are tail calls replaced with simple jumps (via `break` or `continue`). Huge inputs may blow the heap, but you'll never overflow the stack!
@@ -28,12 +29,12 @@ interface Sliceable extends GenericIndexable {
     slice(start: number, end?: number): this;
 }
 
-function diff_rec<T extends Indexable>(xs: T, i: number, N: number, ys: T, j: number, M: number): Generator<Vec4>;
-function diff<T extends Indexable>(xs: T, ys: T): Generator<[number, number, number, number]>;
-function lcs<T extends Indexable>(xs: T, ys: T): Generator<[number, number, number]>;
+declare function diff_rec<T extends Indexable>(xs: T, i: number, N: number, ys: T, j: number, M: number): Generator<Vec4>;
+declare function diff<T extends Indexable>(xs: T, ys: T): Generator<[number, number, number, number]>;
+declare function lcs<T extends Indexable>(xs: T, ys: T): Generator<[number, number, number]>;
 
-function calcPatch<T extends Sliceable>(xs: T, ys: T): Generator<[number, number, T]>;
-function applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number, number, T]>): Generator<T>;
+declare function calcPatch<T extends Sliceable>(xs: T, ys: T): Generator<[number, number, T]>;
+declare function applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number, number, T]>): Generator<T>;
 ```
 
 `diff_rec(xs, i, N, ys, j, M)` is the core of the library; given two indexable sequences, `xs` and `ys`, starting indices `i` and `j`, and slice-lengths `N` and `M` (i.e., the remaining length after the starting index), it produces a sequence of quadruples `[sx, ex, sy, ey]`, where [sx, ex) indicates a range to delete from `xs` and [sy, ey) indicates a range from `ys` to replace the deleted material with. Simple deletions are indicated when `sy === ey` and simple insertions when `sx === ex`.
@@ -53,17 +54,40 @@ function applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number, number,
 
 ### Empirical results
 
-Another package available throgh npm is [myers-diff](https://www.npmjs.com/package/myers-diff/v/2.0.1), this package is focused on string and does the tokenization internally, while `fast-myers-diff` uses an indexable inputs. The comparable scenario is when we use string inputs comparing by characters.
+- [myers-diff](https://www.npmjs.com/package/myers-diff/v/2.0.1) is focused on string and does the tokenization internally 
+ supporting compare mode `'words'`, `'chars'` or `'line'`, and accepts custom regular expressions as separators.
+- [fast-diff](https://www.npmjs.com/package/fast-diff/v/1.2.1) is specialized on character mode, using substrings instead
+of comparing characters one by one.
+ - **fast-myers-diff**: is type agnostic and uses an iterative implementation.
 
-The table below gives the number of operations per second reported by [benchmark](https://www.npmjs.com/package/benchmark/v/2.1.4) on a Windows 10 with Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz.
+What the three programs have in common is the ability to compute character difference between strings.
 
-| length of LCS | insertions | deletions | myers-diff | fast-myers-diff |
-|------|-----------| ---------- |------------|-----------------|
-|  100 |        10 |         10 |      1,849 |         26,803  |
-|  100 |         50|         50 |        987 |          2,557  |
-| 1000 |        200|        200 |       17.93|             198 |
-| 1000 |          0|         50 |        0.25|             644 |
+The table below gives the number of operations per second reported by 
+[benchmark](https://www.npmjs.com/package/benchmark/v/2.1.4) on a 
+Windows 10 with Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz.
 
 
 
+| input             | fast-myers-diff | fast-diff-1.2.0 | myers-diff-2.0.1 | fast-myers-diff-2.0.0 |
+| ------            |  -----------    | ----------      | -----------------|-------------------|
+| 10, +100, -100    | 1,139 ops/sec   | 2,724 ops/sec   | 768 ops/sec      | 1,115 ops/sec         |
+| 10, +4, -200      | 4,217 ops/sec   | 9,094 ops/sec   | 875 ops/sec      | 4,119 ops/sec         |
+| 100, +10, -10     | 40,825 ops/sec  | 14,531 ops/sec  | 1,049 ops/sec    | 42,327 ops/sec        |
+| 100, +20, -0      | 43,265 ops/sec  | 18,649 ops/sec  | 976 ops/sec      | 44,582 ops/sec        |
+| 100, +0, -20      | 45,387 ops/sec  | 15,867 ops/sec  | 988 ops/sec      | 48,545 ops/sec        |
+| 10, +1000, -1000  | 12.06 ops/sec   | 32.86 ops/sec   | 7.23 ops/sec     | Not supported  |
+| 10000, +100, -100 | 587 ops/sec     | 99.70 ops/sec   | 0.23 ops/sec     | Not supported  |
+| 10000, +200, -0   | 685 ops/sec     | 95.26 ops/sec   | 0.23 ops/sec     | Not supported  |
+| 10000, +0, -200   | 705 ops/sec     | 106 ops/sec     | 0.24 ops/sec     | Not supported  |
+| 10000, +10, -10   | 2,905 ops/sec   | 64.11 ops/sec   | 0.28 ops/sec     | Not supported  |
+| 10000, +20, -0    | 3,378 ops/sec   | 68.45 ops/sec   | 0.26 ops/sec     | Not supported  |
+| 10000, +0, -20    | 3,730 ops/sec   | 59.50 ops/sec   | 0.27 ops/sec     | Not supported  |
 
+
+The `fast-myers-diff: 2.0.0` used `Uint8Array` to save indices, so it can handle correctly only 
+inputs with added length less than 256.
+
+The `fast-diff` is faster than `fast-myers-diff` for inputs in which the longest common string is a 
+small portion of the sequences. For differences of 20% `fast-myers-diff` is about 6x faster, for differences of 2% about 50x faster.
+
+      
