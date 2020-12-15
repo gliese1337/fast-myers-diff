@@ -1,6 +1,6 @@
 {
   "name": "fast-myers-diff",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "A fast, minimal, memory-efficient diff algorithm on strings, arrays, and typed arrays.",
   "main": "bin/index.js",
   "files": [
@@ -11,7 +11,8 @@
     "test": "mocha -r ts-node/register test/**/*-test.ts",
     "build": "tsc",
     "minify": "jsmin -o bin/index.min.js bin/index.js && del bin\\index.js && move bin\\index.min.js bin\\index.js",
-    "prepare": "tsc && npm run minify"
+    "prepare": "tsc && npm run minify",
+    "benchmark": "tsc && node test/benchmark.js"
   },
   "keywords": [
     "myers",
@@ -21,15 +22,23 @@
   "author": "Logan R. Kearsley",
   "license": "MIT",
   "devDependencies": {
+    "@types/benchmark": "2.1.0",
     "@types/chai": "^4.2.14",
     "@types/mocha": "^8.0.4",
+    "@types/seedrandom": "^2.4.28",
+    "benchmark": "^2.1.4",
+    "benchtable": "^0.1.0",
     "chai": "^4.2.0",
+    "fast-diff": "1.2.0",
+    "fast-myers-diff": "2.0.0",
     "jsmin": "^1.0.1",
+    "microtime": "^3.0.0",
     "mocha": "^8.2.1",
+    "myers-diff": "^2.0.1",
+    "seedrandom": "^3.0.5",
     "ts-node": "^9.1.1",
     "typescript": "^3.9.7"
   },
-  "dependencies": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gliese1337/fast-myers-diff.git"
