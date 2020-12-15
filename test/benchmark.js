@@ -1,5 +1,5 @@
 const Benchtable = require('benchtable')
-suite = new Benchtable('diffs', {isTransposed : true});
+const suite = new Benchtable('diffs', {isTransposed : true});
 const fastMyersDiff = require('../bin');
 const myersDiff = require('myers-diff');
 const prev_version = require('fast-myers-diff');
@@ -36,7 +36,7 @@ suite.addFunction('myers-diff-2.0.1', (x, y, lcs) => {
     n -= t.lhs.del + t.rhs.add;
   }
   if(typeof lcs === 'number' && n !== 2*lcs) throw 'Wrong result';
-})
+});
 
 suite.addFunction('fast-myers-diff', (x, y) => {
   let n = x.length + y.length;
@@ -44,14 +44,16 @@ suite.addFunction('fast-myers-diff', (x, y) => {
     n -= (xe - xs) + (ye - ys);
   }
   if(typeof lcs === 'number' && n !== 2*lcs) throw 'Wrong result';
-})
+});
+
 suite.addFunction('fast-diff-1.2.0', (x, y) => {
   let n = 0;
   for(const [side, ] of fastDiff(x, y)){
     n += side;
   }
   if(typeof lcs === 'number' && n !== lcs) throw 'Wrong result';
-})
+});
+
 suite.addFunction('fast-myers-diff-2.0.0', (x, y) => {
   let n = x.length + y.length;
   if(n >= 256){
@@ -61,7 +63,7 @@ suite.addFunction('fast-myers-diff-2.0.0', (x, y) => {
     n -= (xe - xs) + (ye - ys);
   }
   if(typeof lcs === 'number' && n !== 2*lcs) throw 'Wrong result';
-})
+});
 
 for(const [n, c1, c2] of [
   [10, 100, 100],

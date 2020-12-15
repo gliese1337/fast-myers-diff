@@ -1,5 +1,4 @@
 import seedRandom from "seedrandom";
-// @ts-ignore
 import * as tu from "./test-utils";
 import {expect} from "chai";
 import {diff} from "../src";
@@ -13,20 +12,20 @@ describe("Randomized editions in small strings", () => {
         // It can be made tight
         const complexityBound = 2 * (2 * n + d1 + d2) * (d1 + d2 + 1);
         const [xs, ys] = tu.subsequences(n, d1, d2);
-        const [xst, yst] = [xs.toString(), ys.toString()]
+        const [xst, yst] = [xs.toString(), ys.toString()];
         const [xsw, ysw] = tu.accessWatchDog(complexityBound, [xs.array(), ys.array()]);
         it(`patch (${n}, ${d1}, ${d2}) '${xst}' -> '${yst}'`, () => {
           // this will throw an error if the number of access exceeds
           // complexity bound
           expect(xs.length).eqls(n - d1);
           expect(ys.length).eqls(n - d2);
-          let es = []
+          let es = [];
           try {
             es = [...diff(xsw, ysw)];
             expect(tu.diffSize(es)).lessThan(d1 + d2 + 1);
           } catch(e) {
             if(e.message.indexOf('Too many operations')){
-              expect.fail({xst, yst}.toString() + '\nToo many operations')
+              expect.fail({xst, yst}.toString() + '\nToo many operations');
             }else{
               throw e;
             }
@@ -53,17 +52,17 @@ describe('Diff pieces', () => {
               seen = tu.checkDiffComputation(x, y, 400 * n * (c1 + c2));
             } catch (e) {
               if (e.message.indexOf('Too many operations')) {
-                throw new Error(JSON.stringify({n, s1:[...s1], s2: [...s2]}))
+                throw new Error(JSON.stringify({n, s1:[...s1], s2: [...s2]}));
               } else {
                 throw e;
               }
             }
             expect(seen).eqls(diffs);
-          })
+          });
         }
       }
     }
-  })
+  });
   describe('dense inputs with predictable results', () => {
     for (let c1 = 1; c1 <= 10; c1 += 1) {
       for (let c2 = 1; c2 <= 10; c2 += 1) {
@@ -75,19 +74,19 @@ describe('Diff pieces', () => {
               seen = tu.checkDiffComputation(x, y, 4 * n * (c1 + c2));
             } catch (e) {
               if (e.message.indexOf('Too many operations')) {
-                throw new Error(JSON.stringify({n, s1:[...s1], s2: [...s2]}))
+                throw new Error(JSON.stringify({n, s1:[...s1], s2: [...s2]}));
               } else {
                 throw e;
               }
             }
             expect(seen).eqls(diffs);
 
-          })
+          });
         }
       }
     }
-  })
-})
+  });
+});
 
 
 describe("Search good examples", () => {

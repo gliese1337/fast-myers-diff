@@ -1,4 +1,3 @@
-
 Fast-Myers-Diff
 ================
 
@@ -6,16 +5,26 @@ This is a fast, compact, memory efficient implementation of the O(ND) Myers diff
 Minified and including type definitions, the published library is less than 4KB.
 
 This implementation improves on a naive implementation of Myers recursive algorithm in several ways:
-* By using circular buffers for k-line computations, we achieve bounds of O(min(N,M) | D) space and O(min(N,M) * D) time,
+* By using circular buffers for k-line computations, we achieve bounds of O(min(N,M) + D) space and O(min(N,M) * D) time,
   where N and M are the lengths of the input sequences and D is the number of differences.
 * The original recursive algorithm is replaced by an iterative version with a minimal stack storing the altered parameters for right-recursion.
   All other recursive calls are tail calls replaced with simple jumps (via `break` or `continue`). Huge inputs may blow the heap, but you'll never overflow the stack!
 * Allocation is minimized by pre-allocating buffer space to be re-used by each simulated recursive call, re-using stack slots, and tracking indices into the original inputs. The core diff algorithm performs no slice operations or other copying of data. This also minimizes garbage production and GC pause time.
 * Buffers are allocated contiguously (using typed arrays) to improve cache locality.
+* Buffers use the smallest numeric type possible for the input length; note that this results in discontinuous bumps in memory usage at input sizes of 256 and 65536.
 
 Because the core algorithm does not slice or copy data, it depends only on being able to compare elements of the inputs at arbitrary indices.
 Thus, it automatically operates equally well on any indexable type--strings, basic arrays, or any flavor of typed array.
 Additionally, the library permits optimizing total application memory usage by producing output in the form of generators, rather than forcing you to accumulate the full output up-front.
+
+### Comparison With Other Lbraries
+- [myers-diff](https://www.npmjs.com/package/myers-diff/v/2.0.1) is focused on strings and does the tokenization internally, supporting `'words'`, `'chars'` or `'line'` compare modes as well as custom regular expressions.
+- [fast-diff](https://www.npmjs.com/package/fast-diff/v/1.2.1) is specialized on character mode, using substrings instead of comparing characters one by one.
+ - **fast-myers-diff**: is type agnostic and uses an iterative implementation.
+
+All three libraries have the ability to compute character differences between strings.
+
+### Interface
 
 The library exports the following interface:
 
@@ -39,7 +48,7 @@ declare function applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number,
 
 `diff_rec(xs, i, N, ys, j, M)` is the core of the library; given two indexable sequences, `xs` and `ys`, starting indices `i` and `j`, and slice-lengths `N` and `M` (i.e., the remaining length after the starting index), it produces a sequence of quadruples `[sx, ex, sy, ey]`, where [sx, ex) indicates a range to delete from `xs` and [sy, ey) indicates a range from `ys` to replace the deleted material with. Simple deletions are indicated when `sy === ey` and simple insertions when `sx === ex`.
 
-`diff(xs, ys)` is a wrapper around `diff_rec` which checks for common affixes and calculates `i`, `j`, `N`, and `M` automatically.
+`diff(xs, ys)` is a wrapper around `diff_rec` which checks for common affixes (reducing the memory consumption and time spent in the core diff algorithm) and calculates `i`, `j`, `N`, and `M` automatically.
 
 `lcs(xs, ys)` calls `diff` internally, but pre-processes the output to produce triples of the form `[sx, sy, l]`, where `sx` and `sy` are the starting idices in `xs` and `ys` respectively of an aligned common substring, and `l` is the length of said substring. Indexing into the original input sequences can be used to retrieve the actual Longest Common Subsequence from this information, but the `lcs` function itself does not attempt to take slices of the inputs.
 
@@ -51,21 +60,11 @@ declare function applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number,
 
 `diff_rec`, `diff` and `lcs` will also work with custom container types, as long as your container objects have a numeric `length` property. `calcPatch` and `applyPatch` will work with custom types provided that they also implement a suitable `slice(start[, end])` method.
 
-
 ### Empirical results
-
-- [myers-diff](https://www.npmjs.com/package/myers-diff/v/2.0.1) is focused on string and does the tokenization internally 
- supporting compare mode `'words'`, `'chars'` or `'line'`, and accepts custom regular expressions as separators.
-- [fast-diff](https://www.npmjs.com/package/fast-diff/v/1.2.1) is specialized on character mode, using substrings instead
-of comparing characters one by one.
- - **fast-myers-diff**: is type agnostic and uses an iterative implementation.
-
-What the three programs have in common is the ability to compute character difference between strings.
 
 The table below gives the number of operations per second reported by 
 [benchmark](https://www.npmjs.com/package/benchmark/v/2.1.4) on a 
 Windows 10 with Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz.
-
 
 
 | input             | fast-myers-diff | fast-diff-1.2.0 | myers-diff-2.0.1 | fast-myers-diff-2.0.0 |

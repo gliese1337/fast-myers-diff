@@ -1,15 +1,13 @@
 import {diff} from "../src";
 import {expect} from "chai";
-
-
 export class CharArray extends Uint16Array {
   constructor(v: any) {
-    super(typeof v === 'string' ? v.split('').map(x => x.charCodeAt(0)) : v)
-    Object.defineProperties(this, {length: {writable: false, value: super.length}})
+    super(typeof v === 'string' ? v.split('').map(x => x.charCodeAt(0)) : v);
+    Object.defineProperties(this, {length: {writable: false, value: super.length}});
   }
 
   toString() {
-    return String.fromCharCode(...this.codeArray())
+    return String.fromCharCode(...this.codeArray());
   }
 
   slice(start?: number, end?: number): CharArray {
@@ -30,7 +28,7 @@ export function string(n: number) {
   for (let i = 0; i < n; ++i) {
     u[i] = 65 + 20 * Math.random();
   }
-  return u
+  return u;
 }
 
 /**
@@ -62,7 +60,7 @@ export function sample(nSamples: number, end: number): Int32Array {
 }
 
 export function substring(input: CharArray, totalLength: number): CharArray {
-  const out = new CharArray(totalLength)
+  const out = new CharArray(totalLength);
   const pos = sample(totalLength, input.length);
   for (let i = 0; i < totalLength; ++i) {
     out[i] = input[pos[i]];
@@ -82,7 +80,7 @@ export function substring(input: CharArray, totalLength: number): CharArray {
 export function subsequences(n: number | CharArray, d1: number, d2: number): [CharArray, CharArray] {
   const z = typeof n === 'number' ? string(n) : n;
   const x = substring(z, z.length - d1);
-  const y = substring(z, z.length - d2)
+  const y = substring(z, z.length - d2);
   return [x, y];
 }
 
@@ -100,16 +98,16 @@ function direcDiffPrediction(n: number, c1: number, c2: number, margin: number, 
   while (i1 < c1 || i2 < c2) {
     if (i1 < c1 && (i2 >= c2 || s1[i1] - i1 <= s2[i2] - i2)) {
       const t = (s1[i1++] += offset + 1);
-      diffs.push([t, t + 1, t + 1 + (i2 - i1), t + 1 + (i2 - i1)])
+      diffs.push([t, t + 1, t + 1 + (i2 - i1), t + 1 + (i2 - i1)]);
       x[t] = v1;
     } else {
       const t = (s2[i2++] += offset + 1);
-      diffs.push([t + 1 - (i2 - i1), t + 1 - (i2 - i1), t, t + 1])
+      diffs.push([t + 1 - (i2 - i1), t + 1 - (i2 - i1), t, t + 1]);
       y[t] = v2;
     }
     offset += margin;
   }
-  return {x, y, s1, s2, diffs}
+  return {x, y, s1, s2, diffs};
 }
 
 /**
@@ -121,7 +119,7 @@ function direcDiffPrediction(n: number, c1: number, c2: number, margin: number, 
  */
 export function sparseBinaryPredictable(n: number, c1: number, c2: number): DiffPredictionInfo {
   if ((c1 + c2) * (c1 + c2 + 1) > n) {
-    throw new Error('The changes must be sparser')
+    throw new Error('The changes must be sparser');
   }
   const margin = c1 + c2 + 1;
   const v1 = 1, v2 = 1;
@@ -137,7 +135,7 @@ export function sparseBinaryPredictable(n: number, c1: number, c2: number): Diff
  */
 export function densePredictable(n: number, c1: number, c2: number): DiffPredictionInfo {
   if ((c1 + c2) * 2 > n) {
-    throw new Error('More changes than the vector length')
+    throw new Error('More changes than the vector length');
   }
   const v1 = 1, v2 = 2;
   return direcDiffPrediction(n, c1, c2, 1, v1, v2);
@@ -159,33 +157,32 @@ const chars = 'abcdefghijklmnopqrstuvwxyz01234567890';
  * where uniq remove repeated elements from y.
  *
  */
-export function* equivalencyClasses(n: number, c: number = 0, k: number = Infinity):
-  Generator<[number, string[]], void, any> {
-  let seq: number[] = [];
-  let work: (i: number, j: number) => Generator<[number, string[]], void, any>;
-  work = function* (i: number, j: number) {
+export function * equivalencyClasses(n: number, c = 0, k = Infinity):
+  Generator<[number, string[]]> {
+  const seq: number[] = [];
+  function * work(i: number, j: number): Generator<[number, string[]]> {
     if (i == n) {
       yield [j, seq.map(i => chars[i])];
     } else {
       for (seq[i] = 0; seq[i] < j; ++seq[i]) {
-        yield* work(i + 1, j);
+        yield * work(i + 1, j);
       }
       if (j < k) {
-        yield* work(i + 1, j + 1);
+        yield * work(i + 1, j + 1);
       }
     }
-  };
-  yield* work(0, Math.min(c, k));
+  }
+  yield * work(0, Math.min(c, k));
 }
 
 
 export function checkDiffComputation(xs: CharArray, ys: CharArray, B: number): number[][] {
   const [xsw, ysw] = accessWatchDog(B, [xs.array(), ys.array()]);
-  let es = []
+  let es = [];
   try {
     es = [...diff(xsw, ysw)];
   } catch {
-    throw new Error(JSON.stringify({message: 'Too many operations', x: [...xs], y: [...ys]}, null, 2))
+    throw new Error(JSON.stringify({message: 'Too many operations', x: [...xs], y: [...ys]}, null, 2));
   }
   const edited = edit(xs.array(), ys.array(), es).join('');
   expect(edited).eqls(ys.toString());
@@ -200,7 +197,7 @@ export function diffSize(diffs: number[][]): number {
   return s;
 }
 
-export function* allPairsCore(n1: number, n2: number): Generator<[string[], string[]], void, any> {
+export function * allPairsCore(n1: number, n2: number): Generator<[string[], string[]]> {
   for (const [c, v1] of equivalencyClasses(n1)) {
     for (const [, v2] of equivalencyClasses(n2, c, c + 1)) {
       yield [v1, v2];
@@ -208,14 +205,14 @@ export function* allPairsCore(n1: number, n2: number): Generator<[string[], stri
   }
 }
 
-export function* allPairs(n1: number, n2: number): Generator<[string[], string[]], void, any> {
+export function * allPairs(n1: number, n2: number): Generator<[string[], string[]]> {
   // promote less redundancy
   if (n1 > n2) {
     for (const [v2, v1] of allPairsCore(n2, n1)) {
-      yield [v1, v2]
+      yield [v1, v2];
     }
   } else {
-    yield* allPairsCore(n1, n2);
+    yield * allPairsCore(n1, n2);
   }
 }
 
@@ -232,7 +229,7 @@ export function accessWatchDog<T extends object>(max: number, arrays: T[]): T[] 
     }
   };
   return arrays.map(x => {
-    return new Proxy<T>(x, handler)
+    return new Proxy<T>(x, handler);
   });
 }
 
@@ -264,13 +261,13 @@ export function excludeDiff<T>(xs: T[], ys: T[], es: Iterable<number[]>): [T[], 
   let ix = 0;
   let iy = 0;
   const rx: T[] = [];
-  const ry: T[] = []
+  const ry: T[] = [];
   for (const [sx, ex, sy, ey] of es) {
     while (ix < sx) rx.push(xs[ix++]);
     while (iy < sy) ry.push(ys[iy++]);
-    [ix, iy] = [ex, ey]
+    [ix, iy] = [ex, ey];
   }
-  for(const c of xs.slice(ix))rx.push(c)
-  for(const c of ys.slice(iy))ry.push(c)
+  for(const c of xs.slice(ix))rx.push(c);
+  for(const c of ys.slice(iy))ry.push(c);
   return [rx, ry];
 }

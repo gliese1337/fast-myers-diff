@@ -17,25 +17,32 @@ export interface Sliceable<T> extends GenericIndexable<T> {
 type Vec4 = [number, number, number, number];
 type Vec3 = [number, number, number];
 
+type ArrayCons = new (b: ArrayBuffer, o: number, l: number) => TypedArray;
+
+function select_type(L: number): [ArrayCons, number] {
+  if (L < 256) return [Uint8Array, 1];
+  if (L < 65536) return [Uint16Array, 2];
+  return [Uint32Array, 4];
+}
 
 // Find the list of differences between 2 lists by
 // recursive subdivision, requring O(min(N,M)) space
 // and O(min(N,M)*D) worst-case execution time where
 // D is the number of differences.
-export function* diff_rec<T extends Indexable<unknown>>(xs: T, i: number, N: number, ys: T, j: number, M: number): Generator<Vec4> {
+export function * diff_rec<T extends Indexable<unknown>>(xs: T, i: number, N: number, ys: T, j: number, M: number): Generator<Vec4> {
   let Z = (Math.min(N, M) + 1) * 2;
 
-  const b = new ArrayBuffer(8 * Z);
-  const g = new Int32Array(b, 0, Z);
-  const p = new Int32Array(b, 4 * Z, Z);
+  const [cons, m] = select_type(N + M);
+  const b = new ArrayBuffer(2 * m * Z);
+  const g = new cons(b, 0, Z);
+  const p = new cons(b, m * Z, Z);
 
-  let [x, y, u, v, z, s] = [0, 0, 0, 0, 0, 0];
   // previous difference used to disambiguate the results
   let [pxs, pxe, pys, pye] = [-1, -1, -1, -1];
+  let [x, y, u, v, z, s] = [0, 0, 0, 0, 0, 0];
   const stack: Vec4[] = [];
-  for (; ;) {
+  for (;;) {
     Z_block: while (N > 0 && M > 0) {
-      Z = (Math.min(N, M) + 1) * 2;
       g.fill(0, 0, Z);
       p.fill(0, 0, Z);
 
@@ -56,14 +63,13 @@ export function* diff_rec<T extends Indexable<unknown>>(xs: T, i: number, N: num
           const gkp = g[(Zk + 1) % Z];
           x = u = (k === -h || (k !== h && gkm < gkp)) ? gkp : gkm + 1;
           y = v = x - k;
-          while (x < N && y < M && xs[i + x] === ys[j + y]) {
-            x++; y++;
-          }
+          while (x < N && y < M && xs[i + x] === ys[j + y]) x++, y++;
           g[Zk % Z] = x;
           if (parity === 1 && (z = W - k) >= 1 - h && z < h && x + p[(Z + z % Z) % Z] >= N) {
             if (h > 1 || x !== u) {
               stack[s++] = [i + x, N - x, j + y, M - y];
               [N, M] = [u, v];
+              Z = 2 * (Math.min(N, M) + 1);
               continue Z_block;
             } else break h_loop;
           }
@@ -76,14 +82,13 @@ export function* diff_rec<T extends Indexable<unknown>>(xs: T, i: number, N: num
           const pkp = p[(Zk + 1) % Z];
           x = u = (k === -h || (k !== h && pkm < pkp)) ? pkp : pkm + 1;
           y = v = x - k;
-          while (x < N && y < M && xs[offsetx - x] === ys[offsety - y]) {
-            x++; y++;
-          }
+          while (x < N && y < M && xs[offsetx - x] === ys[offsety - y]) x++, y++;
           p[Zk % Z] = x;
           if (parity === 0 && (z = W - k) >= -h && z <= h && x + g[(Z + z % Z) % Z] >= N) {
             if (h > 0 || x !== u) {
               stack[s++] = [i + N - u, u, j + M - v, v];
               [N, M] = [N - x, M - y];
+              Z = 2 * (Math.min(N, M) + 1);
               continue Z_block;
             } else break h_loop;
           }
@@ -92,7 +97,7 @@ export function* diff_rec<T extends Indexable<unknown>>(xs: T, i: number, N: num
 
       if (N === M) continue;
       if (M > N) [i, N, j, M] = [i + N, 0, j + N, M - N];
-      else [i, N, j, M] = [i + M, N - M, j + M, 0];
+      else       [i, N, j, M] = [i + M, N - M, j + M, 0];
 
       // We already know either N or M is zero, so we can
       // skip the extra check at the top of the loop.
@@ -107,27 +112,22 @@ export function* diff_rec<T extends Indexable<unknown>>(xs: T, i: number, N: num
         // it is a contiguous difference extend the existing one
         [pxe, pye] = [i + N, j + M];
       }else{
-        if(pxs >= 0){
-          yield [pxs, pxe, pys, pye];
-        }
+        if(pxs >= 0) yield [pxs, pxe, pys, pye];
+
         // defer this difference until the next is checked
         [pxs, pxe, pys, pye] = [i, i + N, j, j + M];
       }
     }
-    if (s === 0) {
-      break;
-    }
+    if (s === 0)  break;
     [i, N, j, M] = stack[--s];
-    Z = (Math.min(N, M) + 1) << 1;
-  }
-  // output the deferred difference
-  if (pxs >= 0) {
-    yield [pxs, pxe, pys, pye];
+    Z = 2 * (Math.min(N, M) + 1);
   }
 
+  // output the deferred difference
+  if (pxs >= 0) yield [pxs, pxe, pys, pye];
 }
 
-export function* diff<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec4> {
+export function * diff<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec4> {
   let [i, N, M] = [0, xs.length, ys.length];
 
   // eliminate common prefix
@@ -137,12 +137,12 @@ export function* diff<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec
   if (i === N && i === M) return;
 
   // eliminate common suffix
-  while (xs[--N] === ys[--M] && N > i && M > i){}
+  while (xs[--N] === ys[--M] && N > i && M > i);
 
-  yield* diff_rec(xs, i, N + 1 - i, ys, i, M + 1 - i);
+  yield * diff_rec(xs, i, N + 1 - i, ys, i, M + 1 - i);
 }
 
-export function* lcs<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec3> {
+export function * lcs<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec3> {
   const N = xs.length;
 
   // Convert diffs into the dual similar-aligned representation.
@@ -162,7 +162,7 @@ export function* lcs<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec3
   if (i < N) yield [i, j, N - i];
 }
 
-export function* calcPatch<T, S extends Sliceable<T>>(xs: S, ys: S): Generator<[number, number, S]> {
+export function * calcPatch<T, S extends Sliceable<T>>(xs: S, ys: S): Generator<[number, number, S]> {
   // Taking subarrays is cheaper than slicing for TypedArrays.
   const slice = ArrayBuffer.isView(xs) ?
     Uint8Array.prototype.subarray as unknown as typeof xs.slice : xs.slice;
@@ -171,7 +171,7 @@ export function* calcPatch<T, S extends Sliceable<T>>(xs: S, ys: S): Generator<[
   }
 }
 
-export function* applyPatch<T, S extends Sliceable<T>>(xs: S, patch: Iterable<[number, number, S]>): Generator<S> {
+export function * applyPatch<T, S extends Sliceable<T>>(xs: S, patch: Iterable<[number, number, S]>): Generator<S> {
   let i = 0; // Taking subarrays is cheaper than slicing for TypedArrays.
   const slice = ArrayBuffer.isView(xs) ?
     Uint8Array.prototype.subarray as unknown as typeof xs.slice : xs.slice;

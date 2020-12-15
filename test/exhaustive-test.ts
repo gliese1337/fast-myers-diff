@@ -1,7 +1,6 @@
 import 'mocha';
 import {expect} from 'chai';
 import {applyPatch, calcPatch, diff} from '../src';
-// @ts-ignore
 import * as tu from "./test-utils";
 
 
@@ -16,9 +15,9 @@ describe("Exhaustive patch tests", () => {
           it(`patch '${xs.join('')}' -> '${ys.join('')}'`, () => {
             const es = diff(xsw, ysw);
             const edited = tu.edit(xs, ys, es).join('');
-            expect(edited).eqls(ys.join(''))
+            expect(edited).eqls(ys.join(''));
             const patched = [...applyPatch(xs, calcPatch(xs, ys))].map(x => x.join('')).join('');
-            expect(patched).eqls(ys.join(''))
+            expect(patched).eqls(ys.join(''));
           });
         }
       });

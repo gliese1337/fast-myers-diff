@@ -10,6 +10,7 @@
   "scripts": {
     "test": "mocha -r ts-node/register test/**/*-test.ts",
     "build": "tsc",
+    "lint": "eslint . --ext .ts --fix",
     "minify": "jsmin -o bin/index.min.js bin/index.js && del bin\\index.js && move bin\\index.min.js bin\\index.js",
     "prepare": "tsc && npm run minify",
     "benchmark": "tsc && node test/benchmark.js"
@@ -26,9 +27,12 @@
     "@types/chai": "^4.2.14",
     "@types/mocha": "^8.0.4",
     "@types/seedrandom": "^2.4.28",
+    "@typescript-eslint/eslint-plugin": "^4.10.0",
+    "@typescript-eslint/parser": "^4.10.0",
     "benchmark": "^2.1.4",
     "benchtable": "^0.1.0",
     "chai": "^4.2.0",
+    "eslint": "^7.15.0",
     "fast-diff": "1.2.0",
     "fast-myers-diff": "2.0.0",
     "jsmin": "^1.0.1",

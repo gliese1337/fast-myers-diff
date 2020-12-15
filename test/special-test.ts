@@ -48,15 +48,15 @@ const tests: [string, string, string[]][] = [
 describe('Special tests', () => {
   it('should detect a cyclic rotation', () => {
     for (let l = 2; l < 1024; l += l) {
-      let x = new Uint8Array(l);
-      let y = new Uint8Array(l);
+      const x = new Uint8Array(l);
+      const y = new Uint8Array(l);
       x.fill(0, 1, l);
       y.fill(0, 0, l - 1);
       x[0] = y[l - 1] = 1;
       const es = [...diff(x, y)];
       expect(es).eqls([[0, 1, 0, 0], [l, l, l - 1, l]]);
     }
-  })
+  });
 
   it('binary sparse vector', () => {
     const s1 = [59, 495, 567];
@@ -75,8 +75,8 @@ describe('Special tests', () => {
     for (const i of s2) y[i] = 1;
     const seen = [...diff(x, y)];
     expect(seen).eqls(diffs);
-  })
-})
+  });
+});
 
 
 
@@ -87,7 +87,7 @@ describe('handcrafted examples', () => {
     // But this increase the size and makes it more difficult to
     // interpret the results
     expect([...diff('a', 'b')]).eqls([[0,1,0,1]]);
-  })
+  });
   it('random tests', () => {
     const x = new Array(10000).fill('a');
     const y = x.slice();
@@ -96,18 +96,18 @@ describe('handcrafted examples', () => {
       let t;
       do{
         do{
-          t = 1 + ~~((y.length - 2) * Math.random())
-        }while(y[t] === 'b')
+          t = 1 + ~~((y.length - 2) * Math.random());
+        }while(y[t] === 'b');
         y[t] = 'b';
         if(++j === y.length){
           // Prevent an infinite loop.
           return;
         }
-      }while(y[t-1] === 'b' || y[t+1] === 'b')
+      }while(y[t-1] === 'b' || y[t+1] === 'b');
       expect([...diff(x, y)].length).eqls(i+1);
     }
     expect([...diff('a', 'b')]).eqls([[0,1,0,1]]);
-  })
+  });
 
   for (const {n, s1, s2, diffs} of [
     {
@@ -136,15 +136,15 @@ describe('handcrafted examples', () => {
     for (const i of s1) x[i] = 'b';
     for (const i of s2) y[i] = 'c';
     const yt = y.join('');
-    const xt = x.join('')
+    const xt = x.join('');
     it(`Diff for ${xt} ${yt}`, () => {
       const seen = [...diff(x, y)];
-      console.log(x.join(''))
-      console.log(y.join(''))
+      console.log(x.join(''));
+      console.log(y.join(''));
       expect(seen).eqls(diffs);
-    })
+    });
   }
-})
+});
 
 
 describe("LCS", () => {
