@@ -38,7 +38,7 @@ interface Sliceable extends GenericIndexable {
     slice(start: number, end?: number): this;
 }
 
-declare function diff_rec<T extends Indexable>(xs: T, i: number, N: number, ys: T, j: number, M: number): Generator<Vec4>;
+declare function diff_core(i: number, N: number, j: number, M: number, eq: (i: number, j: number) => boolean): Generator<Vec4>;
 declare function diff<T extends Indexable>(xs: T, ys: T): Generator<[number, number, number, number]>;
 declare function lcs<T extends Indexable>(xs: T, ys: T): Generator<[number, number, number]>;
 
@@ -46,13 +46,15 @@ declare function calcPatch<T extends Sliceable>(xs: T, ys: T): Generator<[number
 declare function applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number, number, T]>): Generator<T>;
 ```
 
-`diff_rec(xs, i, N, ys, j, M)` is the core of the library; given two indexable sequences, `xs` and `ys`, starting indices `i` and `j`, and slice-lengths `N` and `M` (i.e., the remaining length after the starting index), it produces a sequence of quadruples `[sx, ex, sy, ey]`, where [sx, ex) indicates a range to delete from `xs` and [sy, ey) indicates a range from `ys` to replace the deleted material with. Simple deletions are indicated when `sy === ey` and simple insertions when `sx === ex`.
+`diff_core(i, N, j, M, eq)` is the core of the library; given starting indices `i` and `j`, and slice-lengths `N` and `M` (i.e., the remaining length of the relevane sequence after the starting index), it produces a sequence of quadruples `[sx, ex, sy, ey]`, where [sx, ex) indicates a range to delete from `xs` and [sy, ey) indicates a range from `ys` to replace the deleted material with. Simple deletions are indicated when `sy === ey` and simple insertions when `sx === ex`. Note that direct access to the sequences themselves is not required; instead, `diff_core`, take a callback function `eq` which is used to determine whether the relevant sequences are equal at given indices. Note that lacking access to the actual sequences being diffed *ensures* that the library cannot sacrifice efficiency by making temporary copies.
 
-`diff(xs, ys)` is a wrapper around `diff_rec` which checks for common affixes (reducing the memory consumption and time spent in the core diff algorithm) and calculates `i`, `j`, `N`, and `M` automatically.
+By writing your own `eq` implementation, it is possible to compute diffs of sequences of types which are not normally comparable (e.g., arrays of objects where you wish to use value equality rather than reference equality), and even to get diffs of data structures which are not natively indexable. Despite the overhead of making a function call for comparisons, this diff implementation is still significantly faster than `fast-diff` when the size of the diff is significant, as the speed of`fast-diff`'s native string comparisons becomes less important.
+
+`diff(xs, ys)` is a wrapper around `diff_core` which checks for common affixes (reducing the memory consumption and time spent in the core diff algorithm) and calculates `i`, `j`, `N`, `M` and `eq` automatically.
 
 `lcs(xs, ys)` calls `diff` internally, but pre-processes the output to produce triples of the form `[sx, sy, l]`, where `sx` and `sy` are the starting idices in `xs` and `ys` respectively of an aligned common substring, and `l` is the length of said substring. Indexing into the original input sequences can be used to retrieve the actual Longest Common Subsequence from this information, but the `lcs` function itself does not attempt to take slices of the inputs.
 
-`calcPatch(xs, ys)` is a thin wrapper over `diff(xs, ys)` which replaces the [sy, ey) indices with the relevant slice of `ys`. This can be used to reconstitute `ys` given `xs`. Once again, pure insertions are indicated when `sx === ex`, but pure deletions are indicated by an empty slice--i.e., an empty string, a zero-length array, etc. The insert slices are of the same type as the original `ys`. If `ys` is a string or an array, they are produced with the `slice` methods of strings or arrays, which will result in a shallow copy. If `ys` is a typed array, slices will be produced with `TypedArray.prototype.subarray`, which re-uses the existing underlying memory.
+`calcPatch(xs, ys)` is a thin wrapper over `diff` which replaces the [sy, ey) indices with the relevant slice of `ys`. This can be used to reconstitute `ys` given `xs`. Once again, pure insertions are indicated when `sx === ex`, but pure deletions are indicated by an empty slice--i.e., an empty string, a zero-length array, etc. The insert slices are of the same type as the original `ys`. If `ys` is a string or an array, they are produced with the `slice` methods of strings or arrays, which will result in a shallow copy. If `ys` is a typed array, slices will be produced with `TypedArray.prototype.subarray`, which re-uses the existing underlying memory.
 
 `applyPatch(xs, patch)` takes the output of `calcPatch(xs, ys)` and uses it to reconstitute the original elements of `ys`. The output is not, however, a single reconstituted `Indexable`, but a sequence of chunks taken alternately from `xs` and from the `patch` data. This is done for two reasons:
 1. It avoids special-case code for joining each possible `Indexable` type;
@@ -82,11 +84,6 @@ Windows 10 with Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz.
 | 10000, +20, -0    | 3,378 ops/sec   | 68.45 ops/sec   | 0.26 ops/sec     | Not supported  |
 | 10000, +0, -20    | 3,730 ops/sec   | 59.50 ops/sec   | 0.27 ops/sec     | Not supported  |
 
+`fast-myers-diff@2.0.0` used `Uint8Array` to save indices, so it can only correctly handle inputs with added length less than 256.
 
-The `fast-myers-diff: 2.0.0` used `Uint8Array` to save indices, so it can handle correctly only 
-inputs with added length less than 256.
-
-The `fast-diff` is faster than `fast-myers-diff` for inputs in which the longest common string is a 
-small portion of the sequences. For differences of 20% `fast-myers-diff` is about 6x faster, for differences of 2% about 50x faster.
-
-      
+`fast-diff` is faster than `fast-myers-diff` for inputs in which the longest common string is a small portion of the sequences. For differences of 20% `fast-myers-diff` is about 6x faster, for differences of 2% about 50x faster.
