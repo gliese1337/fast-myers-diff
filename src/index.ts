@@ -199,21 +199,21 @@ export function * diff_core(
   if (state.pxs >= 0) yield [state.pxs, state.pxe, state.pys, state.pye];
 }
 
-export function * diff<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec4> {
+export function diff<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec4> {
   let [i, N, M] = [0, xs.length, ys.length];
 
   // eliminate common prefix
   while (i < N && i < M && xs[i] === ys[i]) i++;
 
   // check for equality
-  if (i === N && i === M) return;
+  if (i === N && i === M) [][Symbol.iterator]();
 
   // eliminate common suffix
   while (xs[--N] === ys[--M] && N > i && M > i);
 
   const eq = (x: number, y: number) => xs[x] === ys[y];
 
-  yield * diff_core(i, N + 1 - i, i, M + 1 - i, eq);
+  return diff_core(i, N + 1 - i, i, M + 1 - i, eq);
 }
 
 export function * lcs<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec3> {
