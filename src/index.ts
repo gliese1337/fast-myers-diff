@@ -58,23 +58,22 @@ function diff_internal(state: DiffState, c: number): number {
           const offsetx = i + N - 1;
           const offsety = j + M - 1;
           const hmax = (L + parity) / 2;
+          let z: number;
           h_loop: for (let h = 0; h <= hmax; h++) {
             const kmin = 2 * Math.max(0, h - M) - h;
             const kmax = h - 2 * Math.max(0, h - N);
 
             // Forward pass
             for (let k = kmin; k <= kmax; k += 2) {
-              const Zk = (k % Z) + Z;
-              const gkm = b[(Zk - 1) % Z];
-              const gkp = b[(Zk + 1) % Z];
+              const gkm = b[k - 1 - Z * Math.floor((k - 1)/Z)];
+              const gkp = b[k + 1 - Z * Math.floor((k + 1)/Z)];
               const u = (k === -h || (k !== h && gkm < gkp)) ? gkp : gkm + 1;
               const v = u - k;
               let x = u;
               let y = v;
-              let z: number;
               while (x < N && y < M && eq(i + x, j + y)) x++, y++;
-              b[Zk % Z] = x;
-              if (parity === 1 && (z = W - k) >= 1 - h && z < h && x + b[Z + (Z + z % Z) % Z] >= N) {
+              b[k - Z * Math.floor(k/Z)] = x;
+              if (parity === 1 && (z = W - k) >= 1 - h && z < h && x + b[Z + z - Z * Math.floor(z/Z)] >= N) {
                 if (h > 1 || x !== u) {
                   stack_base[stack_top++] = i + x;
                   stack_base[stack_top++] = N - x;
@@ -90,17 +89,15 @@ function diff_internal(state: DiffState, c: number): number {
 
             // Reverse pass
             for (let k = kmin; k <= kmax; k += 2) {
-              const Zk = (k % Z) + Z;
-              const pkm = b[Z + (Zk - 1) % Z];
-              const pkp = b[Z + (Zk + 1) % Z];
+              const pkm = b[Z + k - 1 - Z * Math.floor((k - 1)/Z)];
+              const pkp = b[Z + k + 1 - Z * Math.floor((k + 1)/Z)];
               const u = (k === -h || (k !== h && pkm < pkp)) ? pkp : pkm + 1;
               const v = u - k;
               let x = u;
               let y = v;
-              let z: number;
               while (x < N && y < M && eq(offsetx - x, offsety - y)) x++, y++;
-              b[Z + Zk % Z] = x;
-              if (parity === 0 && (z = W - k) >= -h && z <= h && x + b[(Z + z % Z) % Z] >= N) {
+              b[Z + k - Z * Math.floor(k/Z)] = x;
+              if (parity === 0 && (z = W - k) >= -h && z <= h && x + b[z - Z * Math.floor(z/Z)] >= N) {
                 if (h > 0 || x !== u) {
                   stack_base[stack_top++] = i + N - u;
                   stack_base[stack_top++] = u;
