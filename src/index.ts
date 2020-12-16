@@ -42,10 +42,8 @@ type DiffState = {
 // and O(min(N,M)*D) worst-case execution time where
 // D is the number of differences.
 function diff_internal(state: DiffState, c: number): number {
-  let {
-    i, N, j, M, Z, b, eq,
-    stack_top, stack_base,
-  } = state;
+  const { b, eq, stack_base } = state;
+  let { i, N, j, M, Z, stack_top } = state;
   for (;;) {
     switch(c) {
       case 0: {
