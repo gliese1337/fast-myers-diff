@@ -175,31 +175,55 @@ function diff_internal(state: DiffState, c: number): number {
   }
 }
 
-export function * diff_core(
+class DiffGen implements IterableIterator<Vec4> {
+  private c = 0;
+  private result: IteratorResult<Vec4, undefined> =
+    { value: null as any, done: false };
+
+  constructor(private state: DiffState) {}
+
+  [Symbol.iterator]() { return this };
+  
+  next() {
+    const { state, result } = this;
+    if (this.c > 1) {
+      result.done = true;
+      result.value = undefined;
+      return result;
+    }
+    const c = diff_internal(state, this.c);
+    this.c = c;
+    if (c === 1) {
+      result.value = [state.oxs, state.oxe, state.oys, state.oye];
+      return result;
+    }
+    if (state.pxs >= 0) {
+      result.value = [state.pxs, state.pxe, state.pys, state.pye];
+      return result;
+    }
+    result.done = true;
+    result.value = undefined;
+    return result;
+  }
+}
+
+export function diff_core(
   i: number, N: number, j: number, M: number,
   eq: (i: number, j: number) => boolean,
-): Generator<Vec4> {
+): IterableIterator<Vec4> {
   const Z = (Math.min(N, M) + 1) * 2;
   const L = N + M;
   const b = new (L < 256 ? Uint8Array : L < 65536 ? Uint16Array : Uint32Array)(2 * Z);
 
-  const state: DiffState = {
+  return new DiffGen({
     i, N, j, M, Z, b, eq,
     pxs: -1, pxe: -1, pys: -1, pye: -1,
     oxs: -1, oxe: -1, oys: -1, oye: -1,
     stack_top: 0, stack_base: [],
-  };
-
-  let c = diff_internal(state, 0);
-
-  while (c === 1) {
-    yield [state.oxs, state.oxe, state.oys, state.oye];
-    c = diff_internal(state, c);
-  }
-  if (state.pxs >= 0) yield [state.pxs, state.pxe, state.pys, state.pye];
+  });
 }
 
-export function diff<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec4> {
+export function diff<T extends Indexable<unknown>>(xs: T, ys: T): IterableIterator<Vec4> {
   let [i, N, M] = [0, xs.length, ys.length];
 
   // eliminate common prefix
@@ -216,32 +240,59 @@ export function diff<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec4
   return diff_core(i, N + 1 - i, i, M + 1 - i, eq);
 }
 
-export function * lcs<T extends Indexable<unknown>>(xs: T, ys: T): Generator<Vec3> {
-  const N = xs.length;
+class LCSGen implements IterableIterator<Vec3> {
+  private i = 0;
+  private j = 0;
 
-  // Convert diffs into the dual similar-aligned representation.
-  // In each iteration, i and j will be aligned at the beginning
-  // of a shared section. This section is yielded, and i and j
-  // are re-aligned at the end of the succeeding unique sections.
-  let [i, j, sx, ex, ey] = [0, 0, 0, 0, 0];
-  for (const rec of diff(xs, ys)) {
-    [sx, ex, , ey] = rec;
-    if (i !== sx) {
-      rec.length--; // re-use the vec4 as a vec3 to avoid allocation
-      [rec[0], rec[1], rec[2]] = [i, j, sx - i];
-      yield rec as unknown as Vec3;
+  constructor(private diff: IterableIterator<Vec4>, private N: number) {}
+
+  [Symbol.iterator]() { return this };
+  
+  next() {
+    // Convert diffs into the dual similar-aligned representation.
+    // In each iteration, i and j will be aligned at the beginning
+    // of a shared section. This section is yielded, and i and j
+    // are re-aligned at the end of the succeeding unique sections.
+    const rec = this.diff.next();
+    if (rec.done) {
+      const { i, j, N } = this;
+      if (i < N) {
+        rec.done = false as any;
+        rec.value = [i, j, N - i] as any;
+        this.i = N;
+      }
+      return rec as IteratorResult<Vec3>;
     }
-    [i, j] = [ex, ey];
+    const v = rec.value;
+    const sx = v[0];
+    const ex = v[1];
+    const ey = v[3];
+    const { i, j } = this;
+    if (i !== sx) {
+      v.length--; // re-use the vec4 as a vec3 to avoid allocation
+      v[0] = i;
+      v[1] = j;
+      v[2] = sx - i;
+    }
+    
+    this.i = ex;
+    this.j = ey;
+  
+    return rec as unknown as IteratorResult<Vec3>;
   }
-  if (i < N) yield [i, j, N - i];
+}
+
+export function lcs<T extends Indexable<unknown>>(xs: T, ys: T): IterableIterator<Vec3> {
+  return new LCSGen(diff(xs, ys), xs.length);
 }
 
 export function * calcPatch<T, S extends Sliceable<T>>(xs: S, ys: S): Generator<[number, number, S]> {
   // Taking subarrays is cheaper than slicing for TypedArrays.
   const slice = ArrayBuffer.isView(xs) ?
     Uint8Array.prototype.subarray as unknown as typeof xs.slice : xs.slice;
-  for (const [dels, dele, inss, inse] of diff(xs, ys)) {
-    yield [dels, dele, slice.call(ys, inss, inse)];
+  for (const v of diff(xs, ys)) {
+    v[2] = slice.call(ys, v[2], v[3]) as any;
+    yield v as any;
   }
 }
 
