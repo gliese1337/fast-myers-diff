@@ -4,6 +4,7 @@ const fastMyersDiff = require('../bin');
 //const myersDiff = require('myers-diff');
 const prev_version = require('fast-myers-diff');
 const fastDiff = require('fast-diff');
+const fastArray = require('fast-array-diff').diff;
 const seedRandom = require('seedrandom')
 seedRandom('benchmark', {global: true});
 
@@ -38,6 +39,7 @@ suite.addFunction('myers-diff-2.0.1', (x, y, lcs) => {
   if(typeof lcs === 'number' && n !== 2*lcs) throw 'Wrong result';
 });
 */
+
 suite.addFunction('fast-myers-diff', (x, y) => {
   let n = x.length + y.length;
   for(const [xs,xe,ys,ye] of fastMyersDiff.diff(x, y)){
@@ -54,6 +56,14 @@ suite.addFunction('fast-diff-1.2.0', (x, y) => {
   if(typeof lcs === 'number' && n !== lcs) throw 'Wrong result';
 });
 
+suite.addFunction('fast-array-diff-1.0.1', (x, y) => {
+  let n = 0;
+  try {
+  const { removed: _r, added: _a } = fastArray(x.split(''), y.split(''));
+  } catch(e) { console.log(e); }
+  if(typeof lcs === 'number' && n !== lcs) throw 'Wrong result';
+});
+/*
 suite.addFunction('fast-myers-diff-2.0.0', (x, y) => {
   let n = x.length + y.length;
   if(n >= 256){
@@ -64,7 +74,7 @@ suite.addFunction('fast-myers-diff-2.0.0', (x, y) => {
   }
   if(typeof lcs === 'number' && n !== 2*lcs) throw 'Wrong result';
 });
-
+*/
 for(const [n, c1, c2] of [
   [10, 100, 100],
   [10, 4, 200],

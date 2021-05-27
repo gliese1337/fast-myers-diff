@@ -20,9 +20,10 @@ Additionally, the library permits optimizing total application memory usage by p
 ### Comparison With Other Lbraries
 - [myers-diff](https://www.npmjs.com/package/myers-diff/v/2.0.1) is focused on strings and does the tokenization internally, supporting `'words'`, `'chars'` or `'line'` compare modes as well as custom regular expressions.
 - [fast-diff](https://www.npmjs.com/package/fast-diff/v/1.2.1) is specialized on character mode, using substrings instead of comparing characters one by one.
+- [fast-array-diff](https://www.npmjs.com/package/fast-array-diff) is specialized for arrays.
  - **fast-myers-diff**: is type agnostic and uses an iterative implementation.
 
-All three libraries have the ability to compute character differences between strings.
+All `myers-diff`, `fast-diff`, and `fast-myers-diff` all have the ability to compute character differences between strings.
 
 ### Interface
 
@@ -60,7 +61,7 @@ By writing your own `eq` implementation, it is possible to compute diffs of sequ
 1. It avoids special-case code for joining each possible `Indexable` type;
 2. As with all of the other library functions, it permits stream processing without deciding *for* you to allocate enough memory to hold the entire result at once.
 
-`diff_rec`, `diff` and `lcs` will also work with custom container types, as long as your container objects have a numeric `length` property. `calcPatch` and `applyPatch` will work with custom types provided that they also implement a suitable `slice(start[, end])` method.
+`diff` and `lcs` will work with custom container types, as long as your container objects have a numeric `length` property. `calcPatch` and `applyPatch` will work with custom types provided that they also implement a suitable `slice(start[, end])` method.
 
 ### Empirical results
 
@@ -68,22 +69,22 @@ The table below gives the number of operations per second reported by
 [benchmark](https://www.npmjs.com/package/benchmark/v/2.1.4) on a 
 Windows 10 with Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz.
 
-
-| input             | fast-myers-diff | fast-diff-1.2.0 | myers-diff-2.0.1 | fast-myers-diff-2.0.0 |
-| ------            |  -----------    | ----------      | -----------------|-------------------|
-| 10, +100, -100    | 1,139 ops/sec   | 2,724 ops/sec   | 768 ops/sec      | 1,115 ops/sec         |
-| 10, +4, -200      | 4,217 ops/sec   | 9,094 ops/sec   | 875 ops/sec      | 4,119 ops/sec         |
-| 100, +10, -10     | 40,825 ops/sec  | 14,531 ops/sec  | 1,049 ops/sec    | 42,327 ops/sec        |
-| 100, +20, -0      | 43,265 ops/sec  | 18,649 ops/sec  | 976 ops/sec      | 44,582 ops/sec        |
-| 100, +0, -20      | 45,387 ops/sec  | 15,867 ops/sec  | 988 ops/sec      | 48,545 ops/sec        |
-| 10, +1000, -1000  | 12.06 ops/sec   | 32.86 ops/sec   | 7.23 ops/sec     | Not supported  |
-| 10000, +100, -100 | 587 ops/sec     | 99.70 ops/sec   | 0.23 ops/sec     | Not supported  |
-| 10000, +200, -0   | 685 ops/sec     | 95.26 ops/sec   | 0.23 ops/sec     | Not supported  |
-| 10000, +0, -200   | 705 ops/sec     | 106 ops/sec     | 0.24 ops/sec     | Not supported  |
-| 10000, +10, -10   | 2,905 ops/sec   | 64.11 ops/sec   | 0.28 ops/sec     | Not supported  |
-| 10000, +20, -0    | 3,378 ops/sec   | 68.45 ops/sec   | 0.26 ops/sec     | Not supported  |
-| 10000, +0, -20    | 3,730 ops/sec   | 59.50 ops/sec   | 0.27 ops/sec     | Not supported  |
+| input             | fast-myers-diff | fast-diff-1.2.0 | myers-diff-2.0.1 | fast-array-diff-1.0.1 | fast-myers-diff-2.0.0 |
+| ------            |  -----------    | ----------      | -----------------|-----------------------|-----------------------|
+| 10, +100, -100    | 1,139 ops/sec   | 2,724 ops/sec   | 768 ops/sec      | 17.38 ops/sec         | 1,115 ops/sec         |
+| 10, +4, -200      | 4,217 ops/sec   | 9,094 ops/sec   | 875 ops/sec      | 10.26 ops/sec         | 4,119 ops/sec         |
+| 100, +10, -10     | 40,825 ops/sec  | 14,531 ops/sec  | 1,049 ops/sec    | 92.39 ops/sec         | 42,327 ops/sec        |
+| 100, +20, -0      | 43,265 ops/sec  | 18,649 ops/sec  | 976 ops/sec      | 127 ops/sec           | 44,582 ops/sec        |
+| 100, +0, -20      | 45,387 ops/sec  | 15,867 ops/sec  | 988 ops/sec      | 92.10 ops/sec         | 48,545 ops/sec        |
+| 10, +1000, -1000  | 12.06 ops/sec   | 32.86 ops/sec   | 7.23 ops/sec     | 0.18 ops/sec          | Not supported         |
+| 10000, +100, -100 | 587 ops/sec     | 99.70 ops/sec   | 0.23 ops/sec     | 0.14 ops/sec          | Not supported         |
+| 10000, +200, -0   | 685 ops/sec     | 95.26 ops/sec   | 0.23 ops/sec     | 0.13 ops/sec          | Not supported         |
+| 10000, +0, -200   | 705 ops/sec     | 106 ops/sec     | 0.24 ops/sec     | 0.13 ops/sec          | Not supported         |
+| 10000, +10, -10   | 2,905 ops/sec   | 64.11 ops/sec   | 0.28 ops/sec     | 1.13 ops/sec          | Not supported         |
+| 10000, +20, -0    | 3,378 ops/sec   | 68.45 ops/sec   | 0.26 ops/sec     | 1.19 ops/sec          | Not supported         |
+| 10000, +0, -20    | 3,730 ops/sec   | 59.50 ops/sec   | 0.27 ops/sec     | 1.19 ops/sec          | Not supported         |
 
 `fast-myers-diff@2.0.0` used `Uint8Array` to save indices, so it can only correctly handle inputs with added length less than 256.
 
 `fast-diff` is faster than `fast-myers-diff` for inputs in which the longest common string is a small portion of the sequences. For differences of 20% `fast-myers-diff` is about 6x faster, for differences of 2% about 50x faster.
+Results for `fast-array-diff` may be depressed due to the need to convert test strings to arrays.

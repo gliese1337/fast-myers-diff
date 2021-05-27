@@ -33,6 +33,7 @@
     "benchtable": "^0.1.0",
     "chai": "^4.2.0",
     "eslint": "^7.15.0",
+    "fast-array-diff": "1.0.1",
     "fast-diff": "1.2.0",
     "fast-myers-diff": "2.0.0",
     "jsmin": "^1.0.1",
