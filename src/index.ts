@@ -230,7 +230,7 @@ export function diff<T extends Indexable<unknown>>(xs: T, ys: T): IterableIterat
   while (i < N && i < M && xs[i] === ys[i]) i++;
 
   // check for equality
-  if (i === N && i === M) [][Symbol.iterator]();
+  if (i === N && i === M) return [][Symbol.iterator]();
 
   // eliminate common suffix
   while (xs[--N] === ys[--M] && N > i && M > i);
