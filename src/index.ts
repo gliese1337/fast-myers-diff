@@ -17,6 +17,8 @@ export interface Sliceable<T> extends GenericIndexable<T> {
 type Vec4 = [number, number, number, number];
 type Vec3 = [number, number, number];
 
+type Comparator = (i: number, j: number) => boolean;
+
 type DiffState = {
   i: number;
   N: number;
@@ -209,7 +211,7 @@ class DiffGen implements IterableIterator<Vec4> {
 
 export function diff_core(
   i: number, N: number, j: number, M: number,
-  eq: (i: number, j: number) => boolean,
+  eq: Comparator,
 ): IterableIterator<Vec4> {
   const Z = (Math.min(N, M) + 1) * 2;
   const L = N + M;
@@ -223,21 +225,21 @@ export function diff_core(
   });
 }
 
-export function diff<T extends Indexable<unknown>>(xs: T, ys: T): IterableIterator<Vec4> {
+export function diff<T extends Indexable<unknown>>(xs: T, ys: T, eq?: Comparator): IterableIterator<Vec4> {
   let [i, N, M] = [0, xs.length, ys.length];
 
+  const Eq = eq ?? ((i, j) => xs[i] === ys[j]);
+
   // eliminate common prefix
-  while (i < N && i < M && xs[i] === ys[i]) i++;
+  while (i < N && i < M && Eq(i, i)) i++;
 
   // check for equality
   if (i === N && i === M) return [][Symbol.iterator]();
 
   // eliminate common suffix
-  while (xs[--N] === ys[--M] && N > i && M > i);
+  while (Eq(--N, --M) && N > i && M > i);
 
-  const eq = (x: number, y: number) => xs[x] === ys[y];
-
-  return diff_core(i, N + 1 - i, i, M + 1 - i, eq);
+  return diff_core(i, N + 1 - i, i, M + 1 - i, Eq);
 }
 
 class LCSGen implements IterableIterator<Vec3> {
@@ -282,15 +284,15 @@ class LCSGen implements IterableIterator<Vec3> {
   }
 }
 
-export function lcs<T extends Indexable<unknown>>(xs: T, ys: T): IterableIterator<Vec3> {
-  return new LCSGen(diff(xs, ys), xs.length);
+export function lcs<T extends Indexable<unknown>>(xs: T, ys: T, eq?: Comparator): IterableIterator<Vec3> {
+  return new LCSGen(diff(xs, ys, eq), xs.length);
 }
 
-export function * calcPatch<T, S extends Sliceable<T>>(xs: S, ys: S): Generator<[number, number, S]> {
+export function * calcPatch<T, S extends Sliceable<T>>(xs: S, ys: S, eq?: Comparator): Generator<[number, number, S]> {
   // Taking subarrays is cheaper than slicing for TypedArrays.
   const slice = ArrayBuffer.isView(xs) ?
     Uint8Array.prototype.subarray as unknown as typeof xs.slice : xs.slice;
-  for (const v of diff(xs, ys)) {
+  for (const v of diff(xs, ys, eq)) {
     v[2] = slice.call(ys, v[2], v[3]) as any;
     yield v as any;
   }
