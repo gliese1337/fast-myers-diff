@@ -76,6 +76,14 @@ describe('Special tests', () => {
     const seen = [...diff(x, y)];
     expect(seen).eqls(diffs);
   });
+
+  it('works with a custom comparator', () => {
+    const a = "ABab";
+    const b = "abAB";
+    const case_ignore_eq = (i: number, j: number) => a[i].toLocaleLowerCase() === b[j].toLocaleLowerCase();
+    const diffs = diff(a, b, case_ignore_eq);
+    expect(diffs).to.be.empty;
+  })
 });
 
 
