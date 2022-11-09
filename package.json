@@ -38,7 +38,7 @@
     "fast-myers-diff": "2.0.0",
     "jsmin": "^1.0.1",
     "microtime": "^3.0.0",
-    "mocha": "^8.2.1",
+    "mocha": "^10.1.0",
     "myers-diff": "^2.0.1",
     "seedrandom": "^3.0.5",
     "ts-node": "^9.1.1",

@@ -88,3 +88,20 @@ Windows 10 with Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz.
 
 `fast-diff` is faster than `fast-myers-diff` for inputs in which the longest common string is a small portion of the sequences. For differences of 20% `fast-myers-diff` is about 6x faster, for differences of 2% about 50x faster.
 Results for `fast-array-diff` may be depressed due to the need to convert test strings to arrays.
+
+Another benchmarking run shows very similar results, with the latest version of fast-meyers-diff being the fastest by a large margin across most inputs, and fast-diff-1.2.0 pulling slightly ahead for inputs with very long edit scripts.
+
+| input             │ fast-myers-diff │ fast-diff-1.2.0 │ myers-diff-2.0.1 │ fast-array-diff-1.0.1 │ fast-myers-diff-2.0.0 |
+|-------------------|-----------------|-----------------|------------------|-----------------------|-----------------------|
+| 10, +100, -100    │ 1,155 ops/sec   │ 1,415 ops/sec   │ 398 ops/sec      │ 14.35 ops/sec         │ 610 ops/sec           |
+| 10, +4, -200      │ 4,483 ops/sec   │ 4,776 ops/sec   │ 413 ops/sec      │ 9.76 ops/sec          │ 2,106 ops/sec         |
+| 100, +10, -10     │ 39,941 ops/sec  │ 4,980 ops/sec   │ 520 ops/sec      │ 80.47 ops/sec         │ 23,352 ops/sec        |
+| 100, +20, -0      │ 42,264 ops/sec  │ 9,178 ops/sec   │ 430 ops/sec      │ 95.52 ops/sec         │ 24,884 ops/sec        |
+| 100, +0, -20      │ 45,564 ops/sec  │ 4,304 ops/sec   │ 480 ops/sec      │ 53.13 ops/sec         │ 25,206 ops/sec        |
+| 10, +1000, -1000  │ 9.14 ops/sec    │ 12.51 ops/sec   │ 4.40 ops/sec     │ 0.14 ops/sec          │ Not Supported         |
+| 10000, +100, -100 │ 357 ops/sec     │ 29.94 ops/sec   │ 0.13 ops/sec     │ 0.12 ops/sec          │ Not Supported         |
+| 10000, +200, -0   │ 350 ops/sec     │ 48.94 ops/sec   │ 0.13 ops/sec     │ 0.11 ops/sec          │ Not Supported         |
+| 10000, +0, -200   │ 575 ops/sec     │ 51.99 ops/sec   │ 0.13 ops/sec     │ 0.13 ops/sec          │ Not Supported         |
+| 10000, +10, -10   │ 2,108 ops/sec   │ 33.35 ops/sec   │ 0.14 ops/sec     │ 1.17 ops/sec          │ Not Supported         |
+| 10000, +20, -0    │ 2,065 ops/sec   │ 34.75 ops/sec   │ 0.14 ops/sec     │ 1.32 ops/sec          │ Not Supported         |
+| 10000, +0, -20    │ 2,410 ops/sec   │ 26.34 ops/sec   │ 0.15 ops/sec     │ 1.24 ops/sec          │ Not Supported         |
