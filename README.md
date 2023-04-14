@@ -39,11 +39,11 @@ interface Sliceable extends GenericIndexable {
     slice(start: number, end?: number): this;
 }
 
-declare function diff_core(i: number, N: number, j: number, M: number, eq: (i: number, j: number) => boolean): Generator<Vec4>;
-declare function diff<T extends Indexable>(xs: T, ys: T): Generator<[number, number, number, number]>;
-declare function lcs<T extends Indexable>(xs: T, ys: T): Generator<[number, number, number]>;
+declare function diff_core(i: number, N: number, j: number, M: number, eq: (i: number, j: number) => boolean): Generator<[number, number, number, number]>;
+declare function diff<T extends Indexable>(xs: T, ys: T, eq?: (i: number, j: number) => boolean): Generator<[number, number, number, number]>;
+declare function lcs<T extends Indexable>(xs: T, ys: T, eq?: (i: number, j: number) => boolean): Generator<[number, number, number]>;
 
-declare function calcPatch<T extends Sliceable>(xs: T, ys: T): Generator<[number, number, T]>;
+declare function calcPatch<T extends Sliceable>(xs: T, ys: T, eq?: (i: number, j: number) => boolean): Generator<[number, number, T]>;
 declare function applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number, number, T]>): Generator<T>;
 ```
 
@@ -51,11 +51,11 @@ declare function applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number,
 
 By writing your own `eq` implementation, it is possible to compute diffs of sequences of types which are not normally comparable (e.g., arrays of objects where you wish to use value equality rather than reference equality), and even to get diffs of data structures which are not natively indexable. Despite the overhead of making a function call for comparisons, this diff implementation is still significantly faster than `fast-diff` when the size of the diff is significant, as the speed of`fast-diff`'s native string comparisons becomes less important.
 
-`diff(xs, ys, eq)` is a wrapper around `diff_core` which checks for common affixes (reducing the memory consumption and time spent in the core diff algorithm) and calculates `i`, `j`, `N`, `M` and `eq` automatically if not supplied.
+`diff(xs, ys[, eq])` is a wrapper around `diff_core` which checks for common affixes (reducing the memory consumption and time spent in the core diff algorithm) and calculates `i`, `j`, `N`, `M` and `eq` (if it is not supplied) automatically.
 
-`lcs(xs, ys, eq)` calls `diff` internally, but pre-processes the output to produce triples of the form `[sx, sy, l]`, where `sx` and `sy` are the starting idices in `xs` and `ys` respectively of an aligned common substring, and `l` is the length of said substring. Indexing into the original input sequences can be used to retrieve the actual Longest Common Subsequence from this information, but the `lcs` function itself does not attempt to take slices of the inputs.
+`lcs(xs, ys[, eq])` calls `diff` internally, but pre-processes the output to produce triples of the form `[sx, sy, l]`, where `sx` and `sy` are the starting idices in `xs` and `ys` respectively of an aligned common substring, and `l` is the length of said substring. Indexing into the original input sequences can be used to retrieve the actual Longest Common Subsequence from this information, but the `lcs` function itself does not attempt to take slices of the inputs.
 
-`calcPatch(xs, ys, eq)` is a thin wrapper over `diff` which replaces the [sy, ey) indices with the relevant slice of `ys`. This can be used to reconstitute `ys` given `xs`. Once again, pure insertions are indicated when `sx === ex`, but pure deletions are indicated by an empty slice--i.e., an empty string, a zero-length array, etc. The insert slices are of the same type as the original `ys`. If `ys` is a string or an array, they are produced with the `slice` methods of strings or arrays, which will result in a shallow copy. If `ys` is a typed array, slices will be produced with `TypedArray.prototype.subarray`, which re-uses the existing underlying memory.
+`calcPatch(xs, ys[, eq])` is a thin wrapper over `diff` which replaces the [sy, ey) indices with the relevant slice of `ys`. This can be used to reconstitute `ys` given `xs`. Once again, pure insertions are indicated when `sx === ex`, but pure deletions are indicated by an empty slice--i.e., an empty string, a zero-length array, etc. The insert slices are of the same type as the original `ys`. If `ys` is a string or an array, they are produced with the `slice` methods of strings or arrays, which will result in a shallow copy. If `ys` is a typed array, slices will be produced with `TypedArray.prototype.subarray`, which re-uses the existing underlying memory.
 
 `applyPatch(xs, patch)` takes the output of `calcPatch(xs, ys)` and uses it to reconstitute the original elements of `ys`. The output is not, however, a single reconstituted `Indexable`, but a sequence of chunks taken alternately from `xs` and from the `patch` data. This is done for two reasons:
 1. It avoids special-case code for joining each possible `Indexable` type;
@@ -70,7 +70,7 @@ The table below gives the number of operations per second reported by
 Windows 10 with Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz.
 
 | input             | fast-myers-diff | fast-diff-1.2.0 | myers-diff-2.0.1 | fast-array-diff-1.0.1 | fast-myers-diff-2.0.0 |
-| ------            |  -----------    | ----------      | -----------------|-----------------------|-----------------------|
+| ----------------- | --------------- | --------------- | ---------------- | --------------------- | --------------------- |
 | 10, +100, -100    | 1,139 ops/sec   | 2,724 ops/sec   | 768 ops/sec      | 17.38 ops/sec         | 1,115 ops/sec         |
 | 10, +4, -200      | 4,217 ops/sec   | 9,094 ops/sec   | 875 ops/sec      | 10.26 ops/sec         | 4,119 ops/sec         |
 | 100, +10, -10     | 40,825 ops/sec  | 14,531 ops/sec  | 1,049 ops/sec    | 92.39 ops/sec         | 42,327 ops/sec        |
@@ -84,24 +84,24 @@ Windows 10 with Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz.
 | 10000, +20, -0    | 3,378 ops/sec   | 68.45 ops/sec   | 0.26 ops/sec     | 1.19 ops/sec          | Not supported         |
 | 10000, +0, -20    | 3,730 ops/sec   | 59.50 ops/sec   | 0.27 ops/sec     | 1.19 ops/sec          | Not supported         |
 
-`fast-myers-diff@2.0.0` used `Uint8Array` to save indices, so it can only correctly handle inputs with added length less than 256.
+`fast-myers-diff@2.0.0` and earlier used `Uint8Array` to save indices, so it can only correctly handle inputs with added length less than 256.
 
 `fast-diff` is faster than `fast-myers-diff` for inputs in which the longest common string is a small portion of the sequences. For differences of 20% `fast-myers-diff` is about 6x faster, for differences of 2% about 50x faster.
 Results for `fast-array-diff` may be depressed due to the need to convert test strings to arrays.
 
 Another benchmarking run shows very similar results, with the latest version of fast-meyers-diff being the fastest by a large margin across most inputs, and fast-diff-1.2.0 pulling slightly ahead for inputs with very long edit scripts.
 
-| input             │ fast-myers-diff │ fast-diff-1.2.0 │ myers-diff-2.0.1 │ fast-array-diff-1.0.1 │ fast-myers-diff-2.0.0 |
-|-------------------|-----------------|-----------------|------------------|-----------------------|-----------------------|
-| 10, +100, -100    │ 1,155 ops/sec   │ 1,415 ops/sec   │ 398 ops/sec      │ 14.35 ops/sec         │ 610 ops/sec           |
-| 10, +4, -200      │ 4,483 ops/sec   │ 4,776 ops/sec   │ 413 ops/sec      │ 9.76 ops/sec          │ 2,106 ops/sec         |
-| 100, +10, -10     │ 39,941 ops/sec  │ 4,980 ops/sec   │ 520 ops/sec      │ 80.47 ops/sec         │ 23,352 ops/sec        |
-| 100, +20, -0      │ 42,264 ops/sec  │ 9,178 ops/sec   │ 430 ops/sec      │ 95.52 ops/sec         │ 24,884 ops/sec        |
-| 100, +0, -20      │ 45,564 ops/sec  │ 4,304 ops/sec   │ 480 ops/sec      │ 53.13 ops/sec         │ 25,206 ops/sec        |
-| 10, +1000, -1000  │ 9.14 ops/sec    │ 12.51 ops/sec   │ 4.40 ops/sec     │ 0.14 ops/sec          │ Not Supported         |
-| 10000, +100, -100 │ 357 ops/sec     │ 29.94 ops/sec   │ 0.13 ops/sec     │ 0.12 ops/sec          │ Not Supported         |
-| 10000, +200, -0   │ 350 ops/sec     │ 48.94 ops/sec   │ 0.13 ops/sec     │ 0.11 ops/sec          │ Not Supported         |
-| 10000, +0, -200   │ 575 ops/sec     │ 51.99 ops/sec   │ 0.13 ops/sec     │ 0.13 ops/sec          │ Not Supported         |
-| 10000, +10, -10   │ 2,108 ops/sec   │ 33.35 ops/sec   │ 0.14 ops/sec     │ 1.17 ops/sec          │ Not Supported         |
-| 10000, +20, -0    │ 2,065 ops/sec   │ 34.75 ops/sec   │ 0.14 ops/sec     │ 1.32 ops/sec          │ Not Supported         |
-| 10000, +0, -20    │ 2,410 ops/sec   │ 26.34 ops/sec   │ 0.15 ops/sec     │ 1.24 ops/sec          │ Not Supported         |
+| input             | fast-myers-diff | fast-diff-1.2.0 | myers-diff-2.0.1 | fast-array-diff-1.0.1 | fast-myers-diff-2.0.0 |
+| ----------------- | --------------- | --------------- | ---------------- | --------------------- | --------------------- |
+| 10, +100, -100    | 1,155 ops/sec   | 1,415 ops/sec   | 398 ops/sec      | 14.35 ops/sec         | 610 ops/sec           |
+| 10, +4, -200      | 4,217 ops/sec   | 4,776 ops/sec   | 413 ops/sec      | 9.76 ops/sec          | 2,106 ops/sec         |
+| 100, +10, -10     | 39,941 ops/sec  | 4,980 ops/sec   | 520 ops/sec      | 80.47 ops/sec         | 23,352 ops/sec        |
+| 100, +20, -0      | 42,264 ops/sec  | 9,178 ops/sec   | 430 ops/sec      | 95.52 ops/sec         | 24,884 ops/sec        |
+| 100, +0, -20      | 45,564 ops/sec  | 4,304 ops/sec   | 480 ops/sec      | 53.13 ops/sec         | 25,206 ops/sec        |
+| 10, +1000, -1000  | 9.14 ops/sec    | 12.51 ops/sec   | 4.40 ops/sec     | 0.14 ops/sec          | Not Supported         |
+| 10000, +100, -100 | 357 ops/sec     | 29.94 ops/sec   | 0.13 ops/sec     | 0.12 ops/sec          | Not Supported         |
+| 10000, +200, -0   | 350 ops/sec     | 48.94 ops/sec   | 0.13 ops/sec     | 0.11 ops/sec          | Not Supported         |
+| 10000, +0, -200   | 575 ops/sec     | 51.99 ops/sec   | 0.13 ops/sec     | 0.13 ops/sec          | Not Supported         |
+| 10000, +10, -10   | 2,108 ops/sec   | 33.35 ops/sec   | 0.14 ops/sec     | 1.17 ops/sec          | Not Supported         |
+| 10000, +20, -0    | 2,065 ops/sec   | 34.75 ops/sec   | 0.14 ops/sec     | 1.32 ops/sec          | Not Supported         |
+| 10000, +0, -20    | 2,410 ops/sec   | 26.34 ops/sec   | 0.15 ops/sec     | 1.24 ops/sec          | Not Supported         |

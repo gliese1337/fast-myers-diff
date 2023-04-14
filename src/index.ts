@@ -184,7 +184,7 @@ class DiffGen implements IterableIterator<Vec4> {
 
   constructor(private state: DiffState) {}
 
-  [Symbol.iterator]() { return this };
+  [Symbol.iterator]() { return this; }
   
   next() {
     const { state, result } = this;
@@ -228,18 +228,30 @@ export function diff_core(
 export function diff<T extends Indexable<unknown>>(xs: T, ys: T, eq?: Comparator): IterableIterator<Vec4> {
   let [i, N, M] = [0, xs.length, ys.length];
 
-  const Eq = eq ?? ((i, j) => xs[i] === ys[j]);
+  if (typeof eq === 'function') {
+    // eliminate common prefix
+    while (i < N && i < M && eq(i, i)) i++;
 
-  // eliminate common prefix
-  while (i < N && i < M && Eq(i, i)) i++;
+    // check for equality
+    if (i === N && i === M) return [][Symbol.iterator]();
 
-  // check for equality
-  if (i === N && i === M) return [][Symbol.iterator]();
+    // eliminate common suffix
+    while (eq(--N, --M) && N > i && M > i);
 
-  // eliminate common suffix
-  while (Eq(--N, --M) && N > i && M > i);
+  } else {
+    // eliminate common prefix
+    while (i < N && i < M && xs[i] === ys[i]) i++;
 
-  return diff_core(i, N + 1 - i, i, M + 1 - i, Eq);
+    // check for equality
+    if (i === N && i === M) return [][Symbol.iterator]();
+
+    // eliminate common suffix
+    while (xs[--N] === ys[--M] && N > i && M > i);
+
+    eq = (i, j) => xs[i] === ys[j];
+  }
+  
+  return diff_core(i, N + 1 - i, i, M + 1 - i, eq);
 }
 
 class LCSGen implements IterableIterator<Vec3> {
@@ -248,7 +260,7 @@ class LCSGen implements IterableIterator<Vec3> {
 
   constructor(private diff: IterableIterator<Vec4>, private N: number) {}
 
-  [Symbol.iterator]() { return this };
+  [Symbol.iterator]() { return this; }
   
   next() {
     // Convert diffs into the dual similar-aligned representation.

@@ -83,16 +83,14 @@ describe('Special tests', () => {
     const case_ignore_eq = (i: number, j: number) => a[i].toLocaleLowerCase() === b[j].toLocaleLowerCase();
     const diffs = diff(a, b, case_ignore_eq);
     expect(diffs).to.be.empty;
-  })
+  });
 });
-
-
 
 describe('handcrafted examples', () => {
   it('avoid fragmentation (1 char)', () => {
     // Other valid solutions is are
     //   [[0,1,0,0], [1,1,0,1]], [[0,0,0,1],[0,1,1,1]]
-    // But this increase the size and makes it more difficult to
+    // But this increases the size and makes it more difficult to
     // interpret the results
     expect([...diff('a', 'b')]).eqls([[0,1,0,1]]);
   });
@@ -154,7 +152,6 @@ describe('handcrafted examples', () => {
   }
 });
 
-
 describe("LCS", () => {
   for (const [xs, ys, ans] of tests) {
     it(`should calculate lcs for '${xs}', '${ys}'`, () => {
@@ -173,4 +170,3 @@ describe('patch', () => {
     });
   }
 });
-

@@ -5,7 +5,7 @@ import {diff} from "../src";
 
 seedRandom('diff', {global: true});
 
-describe("Randomized editions in small strings", () => {
+describe("Randomized edits in small strings", () => {
   for (let n = 15; n < 25; ++n) {
     for (let d1 = 0; d1 < 10; ++d1) {
       for (let d2 = 0; d2 < 10; ++d2) {
@@ -15,11 +15,11 @@ describe("Randomized editions in small strings", () => {
         const [xst, yst] = [xs.toString(), ys.toString()];
         const [xsw, ysw] = tu.accessWatchDog(complexityBound, [xs.array(), ys.array()]);
         it(`patch (${n}, ${d1}, ${d2}) '${xst}' -> '${yst}'`, () => {
-          // this will throw an error if the number of access exceeds
-          // complexity bound
+          // this will throw an error if the number of accesses exceeds
+          // the complexity bound
           expect(xs.length).eqls(n - d1);
           expect(ys.length).eqls(n - d2);
-          let es = [];
+          let es: number[][] = [];
           try {
             es = [...diff(xsw, ysw)];
             expect(tu.diffSize(es)).lessThan(d1 + d2 + 1);
@@ -30,7 +30,7 @@ describe("Randomized editions in small strings", () => {
               throw e;
             }
           }
-          const edited = tu.edit(xs.array(), ys.array(), es).join('');
+          const edited = tu.edit(xs.array(), ys.array(), es as any).join('');
           expect(edited).eqls(ys.toString());
         });
       }
@@ -47,7 +47,7 @@ describe('Diff pieces', () => {
         for (let n = (c1 + c2 + 1) * (c1 + c2 + 1); n <= 1000; n += 100) {
           it(JSON.stringify({c1, c2, n}), () => {
             const {x, y, s1, s2, diffs} = tu.sparseBinaryPredictable(n, c1, c2);
-            let seen = [];
+            let seen: number[][] = [];
             try {
               seen = tu.checkDiffComputation(x, y, 400 * n * (c1 + c2));
             } catch (e) {
@@ -69,7 +69,7 @@ describe('Diff pieces', () => {
         for (let n = 2*(c1 + c2 + 1); n <= 30; n += 1) {
           it(JSON.stringify({c1, c2, n}), () => {
             const {x, y, s1, s2, diffs} = tu.densePredictable(n, c1, c2);
-            let seen = [];
+            let seen: number[][] = [];
             try {
               seen = tu.checkDiffComputation(x, y, 4 * n * (c1 + c2));
             } catch (e) {
@@ -107,7 +107,7 @@ describe("Search good examples", () => {
   }
 });
 
-describe("Randomized editions (big size size)", () => {
+describe("Randomized edits in big strings", () => {
   for (let n = 5000; n < 10000; n += 500) {
     for (let d1 = 0; d1 < 50; d1 += 10) {
       for (let d2 = 0; d2 < 50; d2 += 10) {
