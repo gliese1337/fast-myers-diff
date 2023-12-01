@@ -1,6 +1,6 @@
 import 'mocha';
 import { expect } from 'chai';
-import { calcPatch, applyPatch, diff, lcs, Sliceable } from '../src';
+import calcDiff, { calcPatch, applyPatch, diff, lcs, Sliceable } from '../src';
 
 function extract<T>(ys: Sliceable<T>, indices: [number, number, number][]) {
   return indices.map(([, s, l]) => ys.slice(s, s + l)).join('');
@@ -168,5 +168,23 @@ describe('patch', () => {
       const edit = [...applyPatch(xs, calcPatch(xs, ys))].join('');
       expect(edit).to.eql(ys);
     });
+  }
+});
+
+describe('main', () => {
+  for (const [xs, ys, diffs] of [
+    [
+      ['a', 'b', 'c', 'd'],
+      ['a', 'e', 'x', 'b', 'c', 'f'],
+      [[0, ['a']], [1, ['e', 'x']], [0, ['b', 'c']], [-1, ['d']], [1, ['f']]]
+    ],
+    [
+      'ab cdeee',
+      'x ab cdee',
+      [[1, 'x '], [0, 'ab cd'], [-1, 'e'], [0, 'ee']]
+    ]
+  ]) {
+    const result = [...calcDiff(xs, ys)];
+    expect(result).to.eql(diffs);
   }
 });

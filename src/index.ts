@@ -321,3 +321,15 @@ export function * applyPatch<T, S extends Sliceable<T>>(xs: S, patch: Iterable<[
   }
   if (i < xs.length) yield slice.call(xs, i);
 }
+
+export default function * calcDiff<T, S extends Sliceable<T>>(xs: S, ys: S, eq?: Comparator): Generator<[number, S]> {
+  let i = 0;
+  const patch = calcPatch(xs, ys, eq);
+  for (const [dels, dele, ins] of patch) {
+    if (i < dels) yield [0, xs.slice(i, dels)];
+    if (dels < dele) yield [-1, xs.slice(dels, dele)];
+    if (ins.length > 0) yield [1, ins];
+    i = dele;
+  }
+  if (i < xs.length) yield [0, xs.slice(i)];
+}

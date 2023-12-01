@@ -11,7 +11,7 @@
     "test": "mocha -r ts-node/register test/**/*-test.ts",
     "build": "tsc",
     "lint": "eslint . --ext .ts --fix",
-    "minify": "jsmin -o bin/index.min.js bin/index.js && del bin\\index.js && move bin\\index.min.js bin\\index.js",
+    "minify": "jsmin -o bin/index.min.js bin/index.js && rm bin/index.js && mv bin/index.min.js bin/index.js",
     "prepare": "tsc && npm run minify",
     "benchmark": "tsc && node test/benchmark.js"
   },
