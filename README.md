@@ -45,6 +45,8 @@ declare function lcs<T extends Indexable>(xs: T, ys: T, eq?: (i: number, j: numb
 
 declare function calcPatch<T extends Sliceable>(xs: T, ys: T, eq?: (i: number, j: number) => boolean): Generator<[number, number, T]>;
 declare function applyPatch<T extends Sliceable>(xs: T, patch: Iterable<[number, number, T]>): Generator<T>;
+
+declare function calcSlices<T, S extends Sliceable<T>>(xs: S, ys: S, eq?: Comparator): Generator<[-1 | 0 | 1, S]>;
 ```
 
 `diff_core(i, N, j, M, eq)` is the core of the library; given starting indices `i` and `j`, and slice-lengths `N` and `M` (i.e., the remaining length of the relevane sequence after the starting index), it produces a sequence of quadruples `[sx, ex, sy, ey]`, where [sx, ex) indicates a range to delete from `xs` and [sy, ey) indicates a range from `ys` to replace the deleted material with. Simple deletions are indicated when `sy === ey` and simple insertions when `sx === ex`. Note that direct access to the sequences themselves is not required; instead, `diff_core`, take a callback function `eq` which is used to determine whether the relevant sequences are equal at given indices. Note that lacking access to the actual sequences being diffed *ensures* that the library cannot sacrifice efficiency by making temporary copies.
@@ -61,7 +63,9 @@ By writing your own `eq` implementation, it is possible to compute diffs of sequ
 1. It avoids special-case code for joining each possible `Indexable` type;
 2. As with all of the other library functions, it permits stream processing without deciding *for* you to allocate enough memory to hold the entire result at once.
 
-`diff` and `lcs` will work with custom container types, as long as your container objects have a numeric `length` property. `calcPatch` and `applyPatch` will work with custom types provided that they also implement a suitable `slice(start[, end])` method.
+`calcSlices(xs, ys)` is a thin wrapper over `diff` which uses the calculated indices to return the complete list of segments of `xs` and `ys` coded by whether they are unique to `xs` (deletions from `xs` to `ys`), components of the longest common subsequence, or unique to `ys` (insertions from `xs` to `ys`). Replacements at the same location result in yeilding the slice of `xs` first, followed by the slice of `ys`. The output elements are pairs of `[type, slice]`, where a type of -1 indicates the slice comes from `xs`, a type of 0 indicates that the slice is common, and a type of 1 indicates that the slice comes from `ys`. This is useful for displaying diffs in a UI, where you want all components shown with deletions and insertions highlighted.
+
+`diff` and `lcs` will work with custom container types, as long as your container objects have a numeric `length` property. `calcPatch`, `applyPatch`, and `calcSlices` will work with custom types provided that they also implement a suitable `slice(start[, end])` method.
 
 ### Empirical results
 

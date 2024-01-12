@@ -321,3 +321,16 @@ export function * applyPatch<T, S extends Sliceable<T>>(xs: S, patch: Iterable<[
   }
   if (i < xs.length) yield slice.call(xs, i);
 }
+
+export function * calcSlices<T, S extends Sliceable<T>>(xs: S, ys: S, eq?: Comparator): Generator<[-1|0|1, S]> {
+  let i = 0; // Taking subarrays is cheaper than slicing for TypedArrays.
+  const slice = ArrayBuffer.isView(xs) ?
+    Uint8Array.prototype.subarray as unknown as typeof xs.slice : xs.slice;
+  for (const [dels, dele, inss, inse] of diff(xs, ys, eq)) {
+    if (i < dels) yield [0, slice.call(xs, i, dels)];
+    if (dels < dele) yield [-1, slice.call(xs, dels, dele)];
+    if (inss < inse) yield [1, slice.call(ys, inss, inse)];
+    i = dele;
+  }
+  if (i < xs.length) yield [0, xs.slice(i)];
+}

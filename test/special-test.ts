@@ -1,6 +1,6 @@
 import 'mocha';
 import { expect } from 'chai';
-import { calcPatch, applyPatch, diff, lcs, Sliceable } from '../src';
+import { calcPatch, applyPatch, diff, lcs, Sliceable, calcSlices } from '../src';
 
 function extract<T>(ys: Sliceable<T>, indices: [number, number, number][]) {
   return indices.map(([, s, l]) => ys.slice(s, s + l)).join('');
@@ -88,12 +88,13 @@ describe('Special tests', () => {
 
 describe('handcrafted examples', () => {
   it('avoid fragmentation (1 char)', () => {
-    // Other valid solutions is are
+    // Other valid solutions are
     //   [[0,1,0,0], [1,1,0,1]], [[0,0,0,1],[0,1,1,1]]
     // But this increases the size and makes it more difficult to
     // interpret the results
     expect([...diff('a', 'b')]).eqls([[0,1,0,1]]);
   });
+
   it('random tests', () => {
     const x = new Array(10000).fill('a');
     const y = x.slice();
@@ -167,6 +168,47 @@ describe('patch', () => {
     it(`should calculate patch for ${ xs }, ${ ys }`, () => {
       const edit = [...applyPatch(xs, calcPatch(xs, ys))].join('');
       expect(edit).to.eql(ys);
+    });
+  }
+});
+
+describe('slices', () => {
+  it('should calculate slices for handcrafted cases', () => {
+    for (const [xs, ys, diffs] of [
+      [
+        ['a', 'b', 'c', 'd'],
+        ['a', 'e', 'x', 'b', 'c', 'f'],
+        [[0, ['a']], [1, ['e', 'x']], [0, ['b', 'c']], [-1, ['d']], [1, ['f']]]
+      ],
+      [
+        'ab cdeee',
+        'x ab cdee',
+        [[1, 'x '], [0, 'ab cd'], [-1, 'e'], [0, 'ee']]
+      ]
+    ]) {
+      const result = [...calcSlices(xs, ys)];
+      expect(result).to.eql(diffs);
+    }
+  });
+
+  for (const [xs, ys] of tests) {
+    it(`should calculate slices for ${ xs }, ${ ys }`, () => {
+      const nx: string[] = [];
+      const ny: string[] = [];
+      for (const [type, str] of calcSlices(xs, ys)) {
+        switch (type) {
+          case 0:
+            ny.push(str);
+          case -1:
+            nx.push(str);
+            break;
+          case 1:
+            ny.push(str);
+            break;
+        }
+      }
+      expect(nx.join('')).to.eql(xs);
+      expect(ny.join('')).to.eql(ys);
     });
   }
 });
